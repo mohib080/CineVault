@@ -74,13 +74,22 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 1. Search local database (fast query)
+    // 1. Search local database (fast indexed query with intelligent ranking)
+    const cleanQ = query.trim();
     const dbResults = await db.query(
       `SELECT * FROM movies 
        WHERE LOWER(title) LIKE LOWER($1) OR LOWER(director) LIKE LOWER($1)
-       ORDER BY (poster_path IS NOT NULL AND poster_path != '') DESC, release_year DESC 
-       LIMIT 40`,
-      [`%${query.trim()}%`]
+       ORDER BY 
+         CASE 
+           WHEN LOWER(title) = LOWER($2) THEN 0
+           WHEN LOWER(title) LIKE LOWER($3) THEN 1
+           ELSE 2 
+         END,
+         (poster_path IS NOT NULL AND poster_path != '') DESC, 
+         rating DESC,
+         release_year DESC 
+       LIMIT 30`,
+      [`%${cleanQ}%`, cleanQ, `${cleanQ}%`]
     );
 
     let combined: any[] = [...dbResults.rows];

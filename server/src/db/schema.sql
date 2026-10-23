@@ -17,11 +17,12 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Movies Table (Local TMDB metadata cache & IMDb ingestion)
+-- 2. Movies & Series Table (TMDB metadata cache & IMDb ingestion)
 CREATE TABLE IF NOT EXISTS movies (
     tmdb_id INT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     release_year INT,
+    title_type VARCHAR(32) DEFAULT 'movie',
     poster_path TEXT,
     backdrop_path TEXT,
     director VARCHAR(255),
@@ -31,6 +32,9 @@ CREATE TABLE IF NOT EXISTS movies (
     rating NUMERIC(3,1),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_movies_title ON movies(title);
+CREATE INDEX IF NOT EXISTS idx_movies_type ON movies(title_type);
 
 -- 3. Diary Entries (Reviews & Watch Logs)
 CREATE TABLE IF NOT EXISTS diary_entries (

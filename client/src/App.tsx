@@ -100,6 +100,7 @@ function AppContent() {
           setSearchQuery(q);
           setCurrentTab('home');
         }}
+        onSelectMovie={handleSelectMovie}
         onQuickLog={handleQuickLogTrigger}
         onOpenAuth={(mode) => setAuthModalMode(mode)}
       />

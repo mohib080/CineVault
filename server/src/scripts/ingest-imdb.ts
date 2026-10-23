@@ -12,19 +12,21 @@ interface IngestOptions {
   minVotes: number;
   limit: number;
   all: boolean;
+  includeSeries: boolean;
 }
 
 function parseArgs(): IngestOptions {
   const args = process.argv.slice(2);
-  let minVotes = 500;
-  let limit = 10000;
+  let minVotes = 100; // Lower threshold to capture massive breadth of movies & series
+  let limit = 50000;
   let all = false;
+  let includeSeries = true;
 
   for (const arg of args) {
     if (arg.startsWith('--min-votes=')) {
-      minVotes = parseInt(arg.split('=')[1], 10) || 500;
+      minVotes = parseInt(arg.split('=')[1], 10) || 100;
     } else if (arg.startsWith('--limit=')) {
-      limit = parseInt(arg.split('=')[1], 10) || 10000;
+      limit = parseInt(arg.split('=')[1], 10) || 50000;
     } else if (arg === '--all') {
       all = true;
       minVotes = 0;
@@ -32,7 +34,7 @@ function parseArgs(): IngestOptions {
     }
   }
 
-  return { minVotes, limit, all };
+  return { minVotes, limit, all, includeSeries };
 }
 
 /**
@@ -71,13 +73,13 @@ async function loadRatings(minVotes: number): Promise<Map<string, MovieRating>> 
           }
         }
 
-        if (lineCount % 250000 === 0) {
-          process.stdout.write(`  Indexed ${indexedCount.toLocaleString()} qualified titles (${lineCount.toLocaleString()} ratings scanned)...\r`);
+        if (lineCount % 300000 === 0) {
+          process.stdout.write(`  Indexed ${indexedCount.toLocaleString()} rated titles (${lineCount.toLocaleString()} scanned)...\r`);
         }
       });
 
       rl.on('close', () => {
-        console.log(`\n  ✅ Successfully indexed ${ratingsMap.size.toLocaleString()} movie ratings (min votes: ${minVotes}).\n`);
+        console.log(`\n  ✅ Successfully indexed ${ratingsMap.size.toLocaleString()} title ratings (min votes: ${minVotes}).\n`);
         resolve(ratingsMap);
       });
 
@@ -88,11 +90,13 @@ async function loadRatings(minVotes: number): Promise<Map<string, MovieRating>> 
 }
 
 /**
- * Streams title.basics.tsv.gz, filters for feature films, and batches them into CineVault DB.
+ * Streams title.basics.tsv.gz, filters for feature films and TV series, and batches them into CineVault DB.
  */
 async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: IngestOptions) {
-  console.log('[Phase 2/2] 🎬 Streaming IMDb title basics (title.basics.tsv.gz) & inserting into CineVault DB...');
+  console.log('[Phase 2/2] 🎬 Streaming IMDb title basics (movies & TV series) & inserting into CineVault DB...');
   const db = await getDb();
+
+  const ALLOWED_TYPES = new Set(['movie', 'tvSeries', 'tvMiniSeries', 'tvMovie']);
 
   return new Promise<void>((resolve, reject) => {
     https.get('https://datasets.imdbws.com/title.basics.tsv.gz', (res) => {
@@ -105,22 +109,24 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
 
       let totalScanned = 0;
       let insertedCount = 0;
-      const batch: any[] = [];
-      const BATCH_SIZE = 500;
+      let batch: any[] = [];
+      const BATCH_SIZE = 1000;
 
       const flushBatch = async () => {
         if (batch.length === 0) return;
         const currentBatch = [...batch];
-        batch.length = 0;
+        batch = [];
 
+        // Insert batch items
         for (const m of currentBatch) {
           try {
             await db.query(
-              `INSERT INTO movies (tmdb_id, title, release_year, poster_path, backdrop_path, director, runtime, overview, imdb_id, rating)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              `INSERT INTO movies (tmdb_id, title, release_year, title_type, poster_path, backdrop_path, director, runtime, overview, imdb_id, rating)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                ON CONFLICT (tmdb_id) DO UPDATE SET
                  title = EXCLUDED.title,
                  release_year = COALESCE(EXCLUDED.release_year, movies.release_year),
+                 title_type = COALESCE(EXCLUDED.title_type, movies.title_type),
                  runtime = COALESCE(EXCLUDED.runtime, movies.runtime),
                  overview = COALESCE(EXCLUDED.overview, movies.overview),
                  imdb_id = EXCLUDED.imdb_id,
@@ -128,7 +134,8 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
               [
                 m.tmdb_id,
                 m.title,
-                m.release_year,
+                m.release_year || null,
+                m.title_type || 'movie',
                 m.poster_path || null,
                 m.backdrop_path || null,
                 m.director || null,
@@ -161,8 +168,8 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
         const runtimeMinutes = cols[7];
         const genres = cols[8] ? cols[8].replace(/\\N/g, '') : '';
 
-        // Filter: feature films only, non-adult
-        if (titleType !== 'movie' || isAdult === '1') return;
+        // Filter: movies and TV series only, non-adult
+        if (!ALLOWED_TYPES.has(titleType) || isAdult === '1') return;
 
         // Check if ratings exist for this title
         const ratingInfo = ratingsMap.get(tconst);
@@ -176,7 +183,15 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
         const releaseYear = startYear !== '\\N' ? parseInt(startYear, 10) : undefined;
         const runtime = runtimeMinutes !== '\\N' ? parseInt(runtimeMinutes, 10) : undefined;
 
+        let displayType = 'movie';
+        if (titleType === 'tvSeries' || titleType === 'tvMiniSeries') {
+          displayType = 'series';
+        }
+
         let overview = '';
+        if (displayType === 'series') {
+          overview += '[TV Series] ';
+        }
         if (genres) overview += `Genres: ${genres.split(',').join(', ')}. `;
         if (ratingInfo) {
           overview += `IMDb Rating: ${ratingInfo.rating}/10 (${ratingInfo.votes.toLocaleString()} votes).`;
@@ -186,9 +201,10 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
           tmdb_id: tmdbId,
           title: primaryTitle,
           release_year: releaseYear,
+          title_type: displayType,
           poster_path: null,
           backdrop_path: null,
-          director: 'IMDb Catalog',
+          director: displayType === 'series' ? 'TV Series' : 'IMDb Catalog',
           runtime,
           overview: overview.trim(),
           imdb_id: tconst,
@@ -200,7 +216,7 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
         if (batch.length >= BATCH_SIZE) {
           rl.pause();
           await flushBatch();
-          process.stdout.write(`  🚀 Ingested ${insertedCount.toLocaleString()} cinema titles into CineVault database...\r`);
+          process.stdout.write(`  🚀 Ingested ${insertedCount.toLocaleString()} movies & series into CineVault database...\r`);
           rl.resume();
         }
 
@@ -212,7 +228,7 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
 
       rl.on('close', async () => {
         await flushBatch();
-        console.log(`\n\n🎉 [IMDb Ingestion Complete] Successfully imported ${insertedCount.toLocaleString()} feature films into CineVault!\n`);
+        console.log(`\n\n🎉 [IMDb Ingestion Complete] Successfully imported ${insertedCount.toLocaleString()} movies & TV series into CineVault!\n`);
         resolve();
       });
 
@@ -225,6 +241,7 @@ async function ingestBasics(ratingsMap: Map<string, MovieRating>, options: Inges
 async function run() {
   console.log('================================================================');
   console.log('🎬 CineVault Production IMDb Streaming Ingestion Pipeline');
+  console.log('   (Movies, TV Series, Mini-Series & Ratings)');
   console.log('================================================================');
 
   const options = parseArgs();

@@ -20,11 +20,21 @@ class SQLiteFallbackDatabase implements IDatabase {
   private db: Database.Database;
 
   constructor() {
-    // In-memory or local sqlite database for seamless zero-config fallback
-    const dbPath = path.resolve(__dirname, '../../../cinevault_fallback.sqlite');
+    // Use D:\cinevault_data if available (saves C: drive space), else local
+    const dbPath = process.env.SQLITE_PATH || (
+      fs.existsSync('D:\\cinevault_data')
+        ? 'D:\\cinevault_data\\cinevault.sqlite'
+        : path.resolve(__dirname, '../../../cinevault_fallback.sqlite')
+    );
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
+    this.db.pragma('synchronous = NORMAL');
+    this.db.pragma('cache_size = -64000');
     this.initTables();
+  }
+
+  getRawDb(): Database.Database {
+    return this.db;
   }
 
   isPostgres(): boolean {
@@ -46,6 +56,7 @@ class SQLiteFallbackDatabase implements IDatabase {
         tmdb_id INTEGER PRIMARY KEY,
         title TEXT NOT NULL,
         release_year INTEGER,
+        title_type TEXT DEFAULT 'movie',
         poster_path TEXT,
         backdrop_path TEXT,
         director TEXT,
@@ -55,6 +66,10 @@ class SQLiteFallbackDatabase implements IDatabase {
         rating NUMERIC,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE INDEX IF NOT EXISTS idx_movies_title ON movies(title);
+      CREATE INDEX IF NOT EXISTS idx_movies_type ON movies(title_type);
+      CREATE INDEX IF NOT EXISTS idx_movies_rating ON movies(rating);
 
       CREATE TABLE IF NOT EXISTS diary_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +111,12 @@ class SQLiteFallbackDatabase implements IDatabase {
       this.db.exec("ALTER TABLE movies ADD COLUMN imdb_id TEXT;");
     } catch {}
     try {
-      this.db.exec("ALTER TABLE movies ADD COLUMN rating NUMERIC;");
+      this.db.exec("ALTER TABLE movies ADD COLUMN title_type TEXT DEFAULT 'movie';");
+    } catch {}
+    try {
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_movies_title ON movies(title);");
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_movies_type ON movies(title_type);");
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_movies_rating ON movies(rating);");
     } catch {}
   }
 

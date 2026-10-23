@@ -11,6 +11,7 @@ interface HomeProps {
 
 export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQuery }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'MOVIE' | 'SERIES'>('ALL');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,6 +33,14 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
     }
     load();
   }, [searchQuery]);
+
+  const displayedMovies = movies.filter((m) => {
+    if (typeFilter === 'ALL') return true;
+    const isSeries = m.title_type === 'series' || m.overview?.includes('[TV Series]');
+    if (typeFilter === 'SERIES') return isSeries;
+    if (typeFilter === 'MOVIE') return !isSeries;
+    return true;
+  });
 
   return (
     <div>
@@ -112,7 +121,7 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
       )}
 
       {/* Movies Grid Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2 style={{ fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {searchQuery ? (
             <>
@@ -120,27 +129,47 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
             </>
           ) : (
             <>
-              <Sparkles size={20} color="var(--accent-gold)" /> Trending & Iconic Cinema
+              <Sparkles size={20} color="var(--accent-gold)" /> Featured Cinema & Series Catalog
             </>
           )}
         </h2>
-        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-          {movies.length} {movies.length === 1 ? 'film' : 'films'}
-        </span>
+
+        {/* Type Filter Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {(['ALL', 'MOVIE', 'SERIES'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.35rem 0.8rem',
+                fontSize: '0.78rem',
+                background: typeFilter === t ? 'var(--bg-card-hover)' : 'transparent',
+                borderColor: typeFilter === t ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                color: typeFilter === t ? 'var(--text-main)' : 'var(--text-muted)'
+              }}
+            >
+              {t === 'ALL' ? 'All Titles' : t === 'MOVIE' ? 'Movies' : 'TV Series'}
+            </button>
+          ))}
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+            {displayedMovies.length} titles
+          </span>
+        </div>
       </div>
 
       {/* Grid */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-          Loading films...
+          Loading titles...
         </div>
-      ) : movies.length === 0 ? (
+      ) : displayedMovies.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>No movies found matching "{searchQuery}".</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>No titles found matching "{searchQuery}".</p>
         </div>
       ) : (
         <div className="movie-grid">
-          {movies.map((m) => (
+          {displayedMovies.map((m) => (
             <MovieCard
               key={m.tmdb_id}
               movie={m}

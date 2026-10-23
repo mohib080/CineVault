@@ -12,11 +12,14 @@ export interface Movie {
   tmdb_id: number;
   title: string;
   release_year?: number;
+  title_type?: string;
   poster_path?: string;
   backdrop_path?: string;
   director?: string;
   runtime?: number;
   overview?: string;
+  imdb_id?: string;
+  rating?: number;
 }
 
 export interface DiaryEntry {
