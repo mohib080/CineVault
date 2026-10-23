@@ -56,23 +56,49 @@ export async function cacheMovie(movie: TMDBMovie): Promise<void> {
   }
 }
 
-// Search movies
+// Search movies across local database (IMDb + cache) and external TMDB
 router.get('/search', async (req: Request, res: Response): Promise<void> => {
   try {
     const query = (req.query.q as string) || '';
     if (!query.trim()) {
-      res.json({ results: getCuratedPopular() });
+      const dbMovies = await db.query(
+        `SELECT * FROM movies 
+         ORDER BY (poster_path IS NOT NULL AND poster_path != '') DESC, release_year DESC, tmdb_id ASC 
+         LIMIT 60`
+      );
+      if (dbMovies.rows.length >= 10) {
+        res.json({ results: dbMovies.rows });
+      } else {
+        res.json({ results: getCuratedPopular() });
+      }
       return;
     }
 
-    const results = await searchMoviesTMDB(query);
+    // 1. Search local database (fast query)
+    const dbResults = await db.query(
+      `SELECT * FROM movies 
+       WHERE LOWER(title) LIKE LOWER($1) OR LOWER(director) LIKE LOWER($1)
+       ORDER BY (poster_path IS NOT NULL AND poster_path != '') DESC, release_year DESC 
+       LIMIT 40`,
+      [`%${query.trim()}%`]
+    );
 
-    // Cache top results asynchronously
-    for (const m of results.slice(0, 5)) {
-      cacheMovie(m).catch(() => {});
+    let combined: any[] = [...dbResults.rows];
+
+    // 2. Also search TMDB if key is configured
+    try {
+      const tmdbResults = await searchMoviesTMDB(query);
+      for (const m of tmdbResults) {
+        if (!combined.some((c) => c.tmdb_id === m.tmdb_id)) {
+          combined.push(m);
+          cacheMovie(m).catch(() => {});
+        }
+      }
+    } catch {
+      // ignore tmdb search failures
     }
 
-    res.json({ results });
+    res.json({ results: combined });
   } catch (err: any) {
     console.error('Movie search error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to search movies.' });
@@ -82,11 +108,21 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
 // Popular / Trending movies
 router.get('/popular', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const movies = getCuratedPopular();
-    for (const m of movies) {
-      cacheMovie(m).catch(() => {});
+    const dbMovies = await db.query(
+      `SELECT * FROM movies 
+       ORDER BY (poster_path IS NOT NULL AND poster_path != '') DESC, release_year DESC, tmdb_id ASC 
+       LIMIT 60`
+    );
+
+    if (dbMovies.rows.length >= 10) {
+      res.json({ results: dbMovies.rows });
+    } else {
+      const curated = getCuratedPopular();
+      for (const m of curated) {
+        cacheMovie(m).catch(() => {});
+      }
+      res.json({ results: curated });
     }
-    res.json({ results: movies });
   } catch (err: any) {
     console.error('Popular movies error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to fetch popular movies.' });

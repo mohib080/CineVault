@@ -51,6 +51,8 @@ class SQLiteFallbackDatabase implements IDatabase {
         director TEXT,
         runtime INTEGER,
         overview TEXT,
+        imdb_id TEXT,
+        rating NUMERIC,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -88,6 +90,14 @@ class SQLiteFallbackDatabase implements IDatabase {
         PRIMARY KEY (list_id, tmdb_id)
       );
     `);
+
+    // Migration helper for existing sqlite tables
+    try {
+      this.db.exec("ALTER TABLE movies ADD COLUMN imdb_id TEXT;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE movies ADD COLUMN rating NUMERIC;");
+    } catch {}
   }
 
   async query<T = any>(text: string, params: any[] = []): Promise<QueryResult<T>> {

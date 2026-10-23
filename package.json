@@ -12,6 +12,8 @@
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
     "build": "npm run build:server && npm run build:client",
+    "ingest:imdb": "cd server && npm run ingest:imdb",
+    "ingest:imdb:all": "cd server && npm run ingest:imdb:all",
     "test:privacy": "cd server && npm test",
     "start": "cd server && npm start"
   },

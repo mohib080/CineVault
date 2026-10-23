@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Movies Table (Local TMDB metadata cache)
+-- 2. Movies Table (Local TMDB metadata cache & IMDb ingestion)
 CREATE TABLE IF NOT EXISTS movies (
     tmdb_id INT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS movies (
     director VARCHAR(255),
     runtime INT,
     overview TEXT,
+    imdb_id VARCHAR(32),
+    rating NUMERIC(3,1),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

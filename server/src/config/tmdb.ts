@@ -112,6 +112,156 @@ const CURATED_MOVIES: TMDBMovie[] = [
     director: 'Christopher Nolan',
     runtime: 148,
     overview: 'Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets, is offered a chance to regain his old life as payment for a task considered to be impossible: "inception".'
+  },
+  {
+    tmdb_id: 278,
+    title: 'The Shawshank Redemption',
+    release_year: 1994,
+    poster_path: '/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg',
+    backdrop_path: '/kXfqcdQKsToO0OUXHcrrNCHDBzO.jpg',
+    director: 'Frank Darabont',
+    runtime: 142,
+    overview: 'Imprisoned in the 1940s for the double murder of his wife and her lover, upstanding banker Andy Dufresne begins a new life at the Shawshank prison.'
+  },
+  {
+    tmdb_id: 155,
+    title: 'The Dark Knight',
+    release_year: 2008,
+    poster_path: '/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
+    backdrop_path: '/nMKdUUepR0i5zn0y1T4CsSB5chy.jpg',
+    director: 'Christopher Nolan',
+    runtime: 152,
+    overview: 'Batman raises the stakes in his war on crime with the help of Lt. Jim Gordon and District Attorney Harvey Dent, but finds himself up against the Joker.'
+  },
+  {
+    tmdb_id: 680,
+    title: 'Pulp Fiction',
+    release_year: 1994,
+    poster_path: '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
+    backdrop_path: '/suaEOtk1N1sgg2MTM7oZd2cfVp3.jpg',
+    director: 'Quentin Tarantino',
+    runtime: 154,
+    overview: 'A burger-loving hit man, his philosophical partner, a drug-addled gangster\'s moll and a washed-up boxer converge in four tales of violence and redemption.'
+  },
+  {
+    tmdb_id: 550,
+    title: 'Fight Club',
+    release_year: 1999,
+    poster_path: '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
+    backdrop_path: '/hZkgoQYus5vegHoetLkCJzb17zJ.jpg',
+    director: 'David Fincher',
+    runtime: 139,
+    overview: 'A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy.'
+  },
+  {
+    tmdb_id: 769,
+    title: 'GoodFellas',
+    release_year: 1990,
+    poster_path: '/aKuFiU82s5ISJpGZp7YkIr3kCUd.jpg',
+    backdrop_path: '/sw7mordbZxgITU877yTpZCud90M.jpg',
+    director: 'Martin Scorsese',
+    runtime: 145,
+    overview: 'The true story of Henry Hill, a half-Irish, half-Sicilian boy in New York who grows up in the mob and works his way up through the ranks.'
+  },
+  {
+    tmdb_id: 603,
+    title: 'The Matrix',
+    release_year: 1999,
+    poster_path: '/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
+    backdrop_path: '/7u3AGqiSlDlYXYrrqtIlHESiOxp.jpg',
+    director: 'Lana Wachowski, Lilly Wachowski',
+    runtime: 136,
+    overview: 'Set in the 22nd century, The Matrix tells the story of a computer hacker who learns from mysterious rebels about the true nature of his reality.'
+  },
+  {
+    tmdb_id: 346,
+    title: 'Seven Samurai',
+    release_year: 1954,
+    poster_path: '/8OKm79FR4FDNUJuCrURW0BPvTBu.jpg',
+    backdrop_path: '/7t04R44h01xP4J80rR0N5GvM35v.jpg',
+    director: 'Akira Kurosawa',
+    runtime: 207,
+    overview: 'A samurai answers a village\'s request for protection after he falls on hard times. The town needs protection from bandits, so the samurai gathers six others to help him teach the people how to defend themselves.'
+  },
+  {
+    tmdb_id: 598,
+    title: 'City of God',
+    release_year: 2002,
+    poster_path: '/k7eYdWvhYQ7RQoU2TB2AcL9z935.jpg',
+    backdrop_path: '/mktkLzF9Z13tW9bU0oIe2q45gD1.jpg',
+    director: 'Fernando Meirelles, Kátia Lund',
+    runtime: 130,
+    overview: 'In the slums of Rio, two kids\' paths diverge as one struggles to become a photographer and the other a kingpin.'
+  },
+  {
+    tmdb_id: 289,
+    title: 'Casablanca',
+    release_year: 1942,
+    poster_path: '/5K7cOHoay2mZusSLezBOY0Qxh8a.jpg',
+    backdrop_path: '/kbv1P3p803f2L47yR4u3M6u7p0t.jpg',
+    director: 'Michael Curtiz',
+    runtime: 102,
+    overview: 'A cynical expatriate American cafe owner struggles to decide whether or not to help his former lover and her fugitive husband escape the Nazis in French Morocco.'
+  },
+  {
+    tmdb_id: 539,
+    title: 'Psycho',
+    release_year: 1960,
+    poster_path: '/yz45KMrAQBtmu5drQDES3Zq9aeo.jpg',
+    backdrop_path: '/4u04e8dZ8p7J7b8m9k6eL1n3m2c.jpg',
+    director: 'Alfred Hitchcock',
+    runtime: 109,
+    overview: 'When fugitive clerk Marion Crane arrives at a secluded motel, she meets a reclusive man under the control of his mother.'
+  },
+  {
+    tmdb_id: 348,
+    title: 'Alien',
+    release_year: 1979,
+    poster_path: '/vfrQk5IPloGg1v9Rzbh2Eg3VGyM.jpg',
+    backdrop_path: '/AmR3JG1DYz5umgKw7iS0m1v1f1o.jpg',
+    director: 'Ridley Scott',
+    runtime: 117,
+    overview: 'During its return voyage, the commercial starship Nostromo intercepts a distress signal from a distant moon and discovers an aggressive predatory extraterrestrial organism.'
+  },
+  {
+    tmdb_id: 274,
+    title: 'The Silence of the Lambs',
+    release_year: 1991,
+    poster_path: '/uS9m8OBk1A8eM9I042bx8XXpqAq.jpg',
+    backdrop_path: '/6bbZ6XyvgfjhQwfplEdgvnFrBum.jpg',
+    director: 'Jonathan Demme',
+    runtime: 118,
+    overview: 'Clarice Starling, a top student at the FBI\'s training academy, is interviewed by Jack Crawford to investigate the psychotic serial killer known only as Buffalo Bill.'
+  },
+  {
+    tmdb_id: 120,
+    title: 'The Lord of the Rings: The Fellowship of the Ring',
+    release_year: 2001,
+    poster_path: '/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg',
+    backdrop_path: '/vRQnzOn4H1vt6irSafMMRpPXqqC.jpg',
+    director: 'Peter Jackson',
+    runtime: 178,
+    overview: 'Young hobbit Frodo Baggins, after inheriting a mysterious ring from his uncle Bilbo, must leave his home behind in order to begin an epic quest to the Cracks of Doom.'
+  },
+  {
+    tmdb_id: 76341,
+    title: 'Mad Max: Fury Road',
+    release_year: 2015,
+    poster_path: '/hA2ple9q4qnwxp3hKVNhroipsir.jpg',
+    backdrop_path: '/nlCHUW2Y9XWbuR2nn7Y9csZGAA3.jpg',
+    director: 'George Miller',
+    runtime: 120,
+    overview: 'An apocalyptic story set in the furthest reaches of our planet, in a stark desert landscape where humanity is broken, and most everyone is crazed fighting for the necessities of life.'
+  },
+  {
+    tmdb_id: 324857,
+    title: 'Spider-Man: Into the Spider-Verse',
+    release_year: 2018,
+    poster_path: '/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg',
+    backdrop_path: '/7d6Zje027vRkWtB5GqG0K1j5p0V.jpg',
+    director: 'Bob Persichetti, Peter Ramsey, Rodney Rothman',
+    runtime: 117,
+    overview: 'Struggling to find his place in the world while juggling school and family, Brooklyn teenager Miles Morales is bitten by a radioactive spider and discovers superhero abilities.'
   }
 ];
 

@@ -89,7 +89,25 @@ TMDB_API_KEY="your_tmdb_api_key_here"
 CLIENT_URL="http://localhost:5173"
 ```
 
-### 3. Run Automated Privacy Verification Tests
+### 3. Ingest Production IMDb Database
+
+To populate CineVault with the official IMDb cinema catalog:
+
+```bash
+# Stream and ingest top qualified feature films (min 500 votes, 10,000 films default)
+npm run ingest:imdb
+
+# Or customize filters:
+cd server
+npx tsx src/scripts/ingest-imdb.ts --min-votes=1000 --limit=5000
+
+# Or ingest the full unrestricted IMDb database:
+npm run ingest:imdb:all
+```
+
+*The streaming pipeline directly decompresses `title.ratings.tsv.gz` and `title.basics.tsv.gz` on the fly without disk bloat, indexing ratings and inserting feature films into the database.*
+
+### 4. Run Automated Privacy Verification Tests
 
 ```bash
 cd server

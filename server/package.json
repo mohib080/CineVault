@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx tests/privacy.test.ts"
+    "test": "tsx tests/privacy.test.ts",
+    "ingest:imdb": "tsx src/scripts/ingest-imdb.ts",
+    "ingest:imdb:all": "tsx src/scripts/ingest-imdb.ts --all"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
