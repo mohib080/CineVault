@@ -198,9 +198,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
         className="bento-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '2.5rem'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem',
+          marginBottom: '2rem'
         }}
       >
         <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -213,7 +213,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
             </div>
           </div>
           <div style={{ marginTop: '0.75rem' }}>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
               {totalLogs}
             </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>
@@ -232,7 +232,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
             </div>
           </div>
           <div style={{ marginTop: '0.75rem' }}>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--accent-emerald)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-emerald)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
               {totalHours} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>hrs</span>
             </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>
@@ -251,7 +251,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
             </div>
           </div>
           <div style={{ marginTop: '0.75rem' }}>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
               {avgRating} {avgRating !== '—' && <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ 5.0</span>}
             </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>

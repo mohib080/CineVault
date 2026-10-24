@@ -69,6 +69,17 @@
   --perspective-stage: 1200px;
 }
 
+html {
+  font-size: clamp(12.5px, 0.82vw, 14.5px);
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -123,7 +134,7 @@ input, textarea, select {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-top: 74px; /* space for fixed transparent gradient navbar */
+  padding-top: 56px; /* space for compact fixed transparent gradient navbar */
 }
 
 /* ========================================================
@@ -206,15 +217,15 @@ input, textarea, select {
 }
 
 .content-container {
-  max-width: 1440px;
+  max-width: 1540px;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem 2.5rem 5rem;
+  padding: 1.25rem 2rem 4rem;
 }
 
 @media (max-width: 768px) {
   .content-container {
-    padding: 1.25rem 1rem 6rem;
+    padding: 1rem 1rem 5rem;
   }
 }
 
@@ -226,7 +237,7 @@ input, textarea, select {
   top: 0;
   left: 0;
   right: 0;
-  height: 76px;
+  height: 56px;
   z-index: 100;
   background: linear-gradient(180deg, rgba(6, 7, 10, 0.97) 0%, rgba(6, 7, 10, 0.82) 60%, rgba(6, 7, 10, 0.35) 90%, transparent 100%);
   backdrop-filter: blur(20px);
@@ -257,31 +268,31 @@ input, textarea, select {
 .bb-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   font-family: var(--font-display);
-  font-size: 1.55rem;
+  font-size: 1.35rem;
   font-weight: 900;
-  letter-spacing: -0.6px;
+  letter-spacing: -0.5px;
   color: #ffffff;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .bb-brand-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--accent-gold);
-  box-shadow: 0 0 12px var(--accent-gold);
+  box-shadow: 0 0 10px var(--accent-gold);
   display: inline-block;
   margin-left: 2px;
 }
 
-/* Center Nav Links - High legibility, larger font */
+/* Center Nav Links - High legibility, sleek compact font */
 .bb-nav-links {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 @media (max-width: 860px) {
@@ -292,11 +303,11 @@ input, textarea, select {
 
 .bb-nav-link {
   color: #94a3b8;
-  font-size: 1.12rem;
+  font-size: 0.96rem;
   font-weight: 700;
   font-family: var(--font-display);
   letter-spacing: -0.2px;
-  padding: 0.6rem 1.25rem;
+  padding: 0.4rem 0.95rem;
   border-radius: var(--radius-full);
   transition: all 0.2s var(--ease-smooth);
   position: relative;
@@ -329,23 +340,23 @@ input, textarea, select {
 .bb-nav-controls {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .bb-search-container {
   position: relative;
-  width: 420px;
+  width: 320px;
 }
 
 @media (max-width: 1280px) {
   .bb-search-container {
-    width: 320px;
+    width: 260px;
   }
 }
 
 @media (max-width: 960px) {
   .bb-search-container {
-    width: 230px;
+    width: 200px;
   }
 }
 
@@ -361,9 +372,9 @@ input, textarea, select {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-full);
-  padding: 0.55rem 2.5rem 0.55rem 2.4rem;
+  padding: 0.38rem 2.2rem 0.38rem 2.2rem;
   color: #ffffff;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   font-family: var(--font-sans);
   outline: none;
   transition: all 0.2s ease;
@@ -589,9 +600,9 @@ input, textarea, select {
 .bb-hero-banner {
   position: relative;
   width: 100%;
-  height: 68vh;
-  min-height: 520px;
-  max-height: 720px;
+  height: min(62vh, 520px);
+  min-height: 400px;
+  max-height: 520px;
   background-size: cover;
   background-position: center 25%;
   overflow: hidden;
@@ -619,10 +630,10 @@ input, textarea, select {
   max-width: 1520px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 2.5rem 3.5rem;
+  padding: 0 2rem 2.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 0.85rem;
   transform: 
     perspective(1000px) 
     rotateX(var(--hero-rot-x, 0deg)) 
@@ -633,18 +644,18 @@ input, textarea, select {
 
 @media (max-width: 768px) {
   .bb-hero-content {
-    padding: 0 1.25rem 2.5rem;
+    padding: 0 1.25rem 2rem;
   }
 }
 
 .bb-hero-title {
   font-family: var(--font-display);
-  font-size: 3.4rem;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
   font-weight: 900;
-  line-height: 1.08;
-  letter-spacing: -1.2px;
+  line-height: 1.1;
+  letter-spacing: -0.8px;
   color: #ffffff;
-  max-width: 780px;
+  max-width: 700px;
   cursor: pointer;
   transition: color 0.2s ease, transform 0.3s var(--ease-3d);
   text-shadow: 0 4px 28px rgba(0, 0, 0, 0.9), 0 0 45px rgba(0, 229, 255, 0.22);
@@ -658,15 +669,15 @@ input, textarea, select {
 
 @media (max-width: 768px) {
   .bb-hero-title {
-    font-size: 2.2rem;
+    font-size: 1.85rem;
   }
 }
 
 .bb-hero-meta {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  font-size: 0.9rem;
+  gap: 0.45rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   flex-wrap: wrap;
@@ -693,11 +704,11 @@ input, textarea, select {
 
 .bb-hero-synopsis {
   color: #cbd5e1;
-  font-size: 1rem;
-  line-height: 1.6;
-  max-width: 620px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  max-width: 560px;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
@@ -707,8 +718,8 @@ input, textarea, select {
 .bb-hero-actions {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
   flex-wrap: wrap;
   transform: translateZ(42px);
 }
@@ -719,8 +730,8 @@ input, textarea, select {
   background: #ffffff;
   color: #06070a;
   font-weight: 750;
-  font-size: 0.95rem;
-  padding: 0.75rem 1.75rem;
+  font-size: 0.88rem;
+  padding: 0.58rem 1.45rem;
   border-radius: var(--radius-full);
   display: inline-flex;
   align-items: center;
@@ -761,8 +772,8 @@ input, textarea, select {
   -webkit-backdrop-filter: blur(16px);
   color: #ffffff;
   font-weight: 600;
-  font-size: 0.95rem;
-  padding: 0.75rem 1.45rem;
+  font-size: 0.88rem;
+  padding: 0.58rem 1.25rem;
   border-radius: var(--radius-full);
   border: 1px solid rgba(255, 255, 255, 0.2);
   display: inline-flex;
@@ -784,8 +795,8 @@ input, textarea, select {
 }
 
 .btn-bb-circle {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(12px);
@@ -806,8 +817,8 @@ input, textarea, select {
 /* Slide Indicator Bars */
 .bb-hero-indicators {
   position: absolute;
-  bottom: 2.5rem;
-  right: 2.5rem;
+  bottom: 2rem;
+  right: 2rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -816,8 +827,8 @@ input, textarea, select {
 
 @media (max-width: 768px) {
   .bb-hero-indicators {
-    bottom: 1.25rem;
-    right: 1.25rem;
+    bottom: 1rem;
+    right: 1rem;
   }
 }
 
@@ -840,14 +851,14 @@ input, textarea, select {
    3. BingeBang Horizontal Carousels (Swimlanes)
    ======================================================== */
 .bb-swimlane {
-  margin-bottom: 3.5rem;
+  margin-bottom: 2.25rem;
 }
 
 .bb-swimlane-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.9rem;
   gap: 1rem;
 }
 
@@ -859,7 +870,7 @@ input, textarea, select {
 
 .bb-swimlane-title {
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.4px;
   color: #ffffff;
@@ -869,19 +880,19 @@ input, textarea, select {
 }
 
 .bb-swimlane-subtitle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .bb-swimlane-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .bb-arrow-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-subtle);
@@ -901,10 +912,10 @@ input, textarea, select {
 
 .bb-swimlane-track {
   display: flex;
-  gap: 1.25rem;
+  gap: 14px;
   overflow-x: auto;
   scroll-behavior: smooth;
-  padding: 0.5rem 0.25rem 1.25rem;
+  padding: 0.35rem 0.2rem 0.9rem;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE 10+ */
 }
@@ -917,9 +928,9 @@ input, textarea, select {
    4. 3D Interactive BingeBang Movie Poster Card
    ======================================================== */
 .bb-movie-card {
-  flex: 0 0 180px;
-  min-width: 180px;
-  max-width: 180px;
+  flex: 0 0 155px;
+  min-width: 155px;
+  max-width: 155px;
   cursor: pointer;
   position: relative;
   perspective: 1200px;
@@ -929,9 +940,9 @@ input, textarea, select {
 
 @media (max-width: 768px) {
   .bb-movie-card {
-    flex: 0 0 145px;
-    min-width: 145px;
-    max-width: 145px;
+    flex: 0 0 135px;
+    min-width: 135px;
+    max-width: 135px;
   }
 }
 
@@ -939,7 +950,7 @@ input, textarea, select {
   position: relative;
   width: 100%;
   aspect-ratio: 2/3;
-  border-radius: 14px;
+  border-radius: 10px;
   overflow: hidden;
   background: #0e1016;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1071,8 +1082,8 @@ input, textarea, select {
 }
 
 .bb-circle-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(10px);
@@ -1102,11 +1113,11 @@ input, textarea, select {
 
 /* Card Title Info Below Poster */
 .bb-card-info {
-  margin-top: 0.65rem;
+  margin-top: 0.5rem;
 }
 
 .bb-card-title {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
@@ -1120,7 +1131,7 @@ input, textarea, select {
   align-items: center;
   justify-content: space-between;
   margin-top: 2px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
@@ -1237,16 +1248,16 @@ input, textarea, select {
    ======================================================== */
 .bento-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 2.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
 .bento-card {
   background: #0d1017;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: 1.15rem;
   perspective: 1000px;
   transform-style: preserve-3d;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
@@ -1400,30 +1411,30 @@ input, textarea, select {
 /* Legacy Utilities for existing subpages */
 .movie-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 14px;
 }
 
 @media (max-width: 768px) {
   .movie-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
   }
 }
 
 .diary-timeline {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .diary-item-card {
   display: flex;
-  gap: 1.5rem;
+  gap: 1.25rem;
   background: #0d1017;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 1rem;
   transition: all 0.25s ease;
 }
 
@@ -1433,8 +1444,8 @@ input, textarea, select {
 }
 
 .diary-item-poster {
-  width: 90px;
-  height: 135px;
+  width: 75px;
+  height: 112px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;

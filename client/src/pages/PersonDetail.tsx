@@ -332,8 +332,8 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-            gap: '1.25rem'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
+            gap: '14px'
           }}
         >
           {displayedCredits.map((credit) => {

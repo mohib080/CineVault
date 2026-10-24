@@ -582,13 +582,13 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
         </section>
 
         {/* Row 5: "Explore Full Catalogue" with Genre Pills & Decade Filter */}
-        <section style={{ marginTop: '4.5rem' }}>
+        <section style={{ marginTop: '3rem' }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'space-between',
-              marginBottom: '1.5rem',
+              marginBottom: '1.25rem',
               gap: '1rem',
               flexWrap: 'wrap'
             }}
@@ -636,8 +636,8 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
               display: 'flex',
               gap: '0.5rem',
               overflowX: 'auto',
-              paddingBottom: '1rem',
-              marginBottom: '1.5rem',
+              paddingBottom: '0.75rem',
+              marginBottom: '1.25rem',
               scrollbarWidth: 'none'
             }}
           >
@@ -695,8 +695,8 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                  gap: '1.5rem'
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
+                  gap: '14px'
                 }}
               >
                 {catalogueMovies.map((movie) => (

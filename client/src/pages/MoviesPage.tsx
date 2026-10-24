@@ -387,8 +387,8 @@ export const MoviesPage: React.FC<MoviesPageProps> = ({ onLogMovie, onSelectMovi
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: '1.5rem'
+              gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
+              gap: '14px'
             }}
           >
             {movies.map((movie) => (
