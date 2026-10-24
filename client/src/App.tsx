@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Home } from './pages/Home';
@@ -19,13 +19,109 @@ import { Search, Film, X } from 'lucide-react';
 
 export type TabType = 'home' | 'movies' | 'series' | 'calendar' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared' | 'person';
 
+interface RouteState {
+  tab: TabType;
+  movieId?: number | null;
+  movieType?: string;
+  personId?: number | null;
+  profileUsername?: string;
+  sharedParams?: { type: 'r' | 'l'; id: number; token?: string } | null;
+}
+
+function parseLocation(): RouteState {
+  const path = window.location.pathname;
+  const searchParams = new URLSearchParams(window.location.search);
+  const token = searchParams.get('token') || undefined;
+
+  // 1. Shared vault: /vault/r/:id or /vault/l/:id
+  const sharedMatch = path.match(/^\/vault\/(r|l)\/(\d+)/i);
+  if (sharedMatch) {
+    return {
+      tab: 'shared',
+      sharedParams: {
+        type: sharedMatch[1].toLowerCase() as 'r' | 'l',
+        id: parseInt(sharedMatch[2], 10),
+        token
+      }
+    };
+  }
+
+  // 2. Movie detail: /movie/:id
+  const movieMatch = path.match(/^\/movie\/(\d+)/i);
+  if (movieMatch) {
+    return {
+      tab: 'detail',
+      movieId: parseInt(movieMatch[1], 10),
+      movieType: 'movie'
+    };
+  }
+
+  // 3. TV/Series detail: /tv/:id or /series/:id
+  const tvMatch = path.match(/^\/(?:tv|series)\/(\d+)/i);
+  if (tvMatch) {
+    return {
+      tab: 'detail',
+      movieId: parseInt(tvMatch[1], 10),
+      movieType: 'series'
+    };
+  }
+
+  // 4. Person detail: /person/:id
+  const personMatch = path.match(/^\/person\/(\d+)/i);
+  if (personMatch) {
+    return {
+      tab: 'person',
+      personId: parseInt(personMatch[1], 10)
+    };
+  }
+
+  // 5. User Profile: /profile/:username
+  const profileMatch = path.match(/^\/profile\/([^/]+)/i);
+  if (profileMatch) {
+    return {
+      tab: 'profile',
+      profileUsername: decodeURIComponent(profileMatch[1])
+    };
+  }
+
+  // 6. Navigation tabs
+  const cleanPath = path.replace(/\/+$/, '').toLowerCase();
+  if (cleanPath === '/movies') return { tab: 'movies' };
+  if (cleanPath === '/series') return { tab: 'series' };
+  if (cleanPath === '/calendar') return { tab: 'calendar' };
+  if (cleanPath === '/my-space' || cleanPath === '/space' || cleanPath === '/dashboard') return { tab: 'dashboard' };
+  if (cleanPath === '/lists') return { tab: 'lists' };
+
+  return { tab: 'home' };
+}
+
+function getPathForState(state: RouteState): string {
+  if (state.tab === 'shared' && state.sharedParams) {
+    const t = state.sharedParams.token ? `?token=${encodeURIComponent(state.sharedParams.token)}` : '';
+    return `/vault/${state.sharedParams.type}/${state.sharedParams.id}${t}`;
+  }
+  if (state.tab === 'detail' && state.movieId) {
+    return state.movieType === 'series' ? `/tv/${state.movieId}` : `/movie/${state.movieId}`;
+  }
+  if (state.tab === 'person' && state.personId) {
+    return `/person/${state.personId}`;
+  }
+  if (state.tab === 'profile' && state.profileUsername) {
+    return `/profile/${encodeURIComponent(state.profileUsername)}`;
+  }
+  if (state.tab === 'movies') return '/movies';
+  if (state.tab === 'series') return '/series';
+  if (state.tab === 'calendar') return '/calendar';
+  if (state.tab === 'dashboard') return '/my-space';
+  if (state.tab === 'lists') return '/lists';
+  return '/';
+}
+
 function AppContent() {
   const { user } = useAuth();
 
-  const [currentTab, setCurrentTab] = useState<TabType>('home');
-  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
-  const [selectedMovieType, setSelectedMovieType] = useState<string | undefined>(undefined);
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [routeState, setRouteState] = useState<RouteState>(() => parseLocation());
+  const hasNavigatedRef = useRef(false);
 
   // Modals
   const [logModalMovie, setLogModalMovie] = useState<Movie | null>(null);
@@ -36,37 +132,96 @@ function AppContent() {
   const [quickSearchInput, setQuickSearchInput] = useState('');
   const [quickSearchResults, setQuickSearchResults] = useState<Movie[]>([]);
 
-  // Shared reader routing: check window.location.pathname
-  const [sharedParams, setSharedParams] = useState<{ type: 'r' | 'l'; id: number; token?: string } | null>(null);
-
+  // Ref to track if any modal is currently open
+  const modalOpenRef = useRef(false);
   useEffect(() => {
-    const path = window.location.pathname;
-    const searchParams = new URLSearchParams(window.location.search);
-    const token = searchParams.get('token') || undefined;
+    modalOpenRef.current = !!(logModalMovie || authModalMode || showImportModal || showQuickSearchModal);
+  }, [logModalMovie, authModalMode, showImportModal, showQuickSearchModal]);
 
-    // Match /vault/r/:id or /vault/l/:id
-    const match = path.match(/^\/vault\/(r|l)\/(\d+)/i);
-    if (match) {
-      setSharedParams({
-        type: match[1].toLowerCase() as 'r' | 'l',
-        id: parseInt(match[2], 10),
-        token
-      });
-      setCurrentTab('shared');
+  const navigateTo = (nextState: RouteState, replace: boolean = false) => {
+    const url = getPathForState(nextState);
+    if (replace) {
+      window.history.replaceState(nextState, '', url);
+    } else {
+      window.history.pushState(nextState, '', url);
+      hasNavigatedRef.current = true;
     }
-  }, []);
-
-  const handleSelectMovie = (movie: Movie) => {
-    setSelectedMovieId(movie.tmdb_id);
-    setSelectedMovieType(movie.title_type);
-    setCurrentTab('detail');
+    setRouteState(nextState);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleGoBack = () => {
+    if (hasNavigatedRef.current && window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigateTo({ tab: 'home' });
+    }
+  };
+
+  // Browser History (popstate) & Keyboard Back Listener
+  useEffect(() => {
+    // Ensure initial entry has state attached
+    const initial = parseLocation();
+    window.history.replaceState(initial, '', window.location.href);
+
+    const handlePopState = (event: PopStateEvent) => {
+      // If a modal was open, close it on back navigation
+      if (modalOpenRef.current) {
+        setLogModalMovie(null);
+        setEditingEntry(null);
+        setAuthModalMode(null);
+        setShowImportModal(false);
+        setShowQuickSearchModal(false);
+      }
+      const state: RouteState = event.state && event.state.tab ? event.state : parseLocation();
+      setRouteState(state);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      const isInput =
+        activeTag === 'input' ||
+        activeTag === 'textarea' ||
+        (document.activeElement as HTMLElement)?.isContentEditable;
+
+      // Handle Backspace when not typing in an input/textarea
+      if (e.key === 'Backspace' && !isInput) {
+        e.preventDefault();
+        handleGoBack();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleSelectTab = (tab: TabType) => {
+    if (tab === routeState.tab && !routeState.movieId && !routeState.personId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    navigateTo({ tab });
+  };
+
+  const handleSelectMovie = (movie: Movie) => {
+    const isSeries = movie.title_type === 'series' || movie.overview?.includes('[TV Series]');
+    navigateTo({
+      tab: 'detail',
+      movieId: movie.tmdb_id,
+      movieType: isSeries ? 'series' : 'movie'
+    });
+  };
+
   const handleSelectPerson = (personId: number) => {
-    setSelectedPersonId(personId);
-    setCurrentTab('person');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo({
+      tab: 'person',
+      personId
+    });
   };
 
   const handleOpenLogForMovie = (movie: Movie) => {
@@ -103,10 +258,8 @@ function AppContent() {
   return (
     <div className="app-container">
       <Navbar
-        currentTab={currentTab}
-        onSelectTab={(tab) => {
-          setCurrentTab(tab as TabType);
-        }}
+        currentTab={routeState.tab}
+        onSelectTab={(tab) => handleSelectTab(tab as TabType)}
         onSelectMovie={handleSelectMovie}
         onSelectPerson={handleSelectPerson}
         onQuickLog={handleQuickLogTrigger}
@@ -115,41 +268,37 @@ function AppContent() {
       />
 
       <main className="main-content">
-        {currentTab === 'shared' && sharedParams && (
+        {routeState.tab === 'shared' && routeState.sharedParams && (
           <SharedVault
-            type={sharedParams.type}
-            id={sharedParams.id}
-            token={sharedParams.token}
-            onGoHome={() => {
-              window.history.pushState({}, '', '/');
-              setSharedParams(null);
-              setCurrentTab('home');
-            }}
+            type={routeState.sharedParams.type}
+            id={routeState.sharedParams.id}
+            token={routeState.sharedParams.token}
+            onGoHome={() => navigateTo({ tab: 'home' })}
           />
         )}
 
-        {currentTab === 'home' && (
+        {routeState.tab === 'home' && (
           <Home
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}
           />
         )}
 
-        {currentTab === 'movies' && (
+        {routeState.tab === 'movies' && (
           <MoviesPage
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}
           />
         )}
 
-        {currentTab === 'series' && (
+        {routeState.tab === 'series' && (
           <SeriesPage
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}
           />
         )}
 
-        {currentTab === 'calendar' && (
+        {routeState.tab === 'calendar' && (
           <CalendarPage
             onSelectMovie={handleSelectMovie}
             onOpenLogModal={handleOpenLogForMovie}
@@ -157,7 +306,7 @@ function AppContent() {
           />
         )}
 
-        {currentTab === 'dashboard' && (
+        {routeState.tab === 'dashboard' && (
           <Dashboard
             onQuickLog={handleQuickLogTrigger}
             onSelectMovie={handleSelectMovie}
@@ -176,37 +325,33 @@ function AppContent() {
           />
         )}
 
-        {currentTab === 'lists' && <ListsPage />}
+        {routeState.tab === 'lists' && <ListsPage />}
 
-        {currentTab === 'detail' && selectedMovieId && (
+        {routeState.tab === 'detail' && routeState.movieId && (
           <MovieDetail
-            tmdbId={selectedMovieId}
-            titleType={selectedMovieType}
-            onBack={() => setCurrentTab('home')}
+            key={`movie-${routeState.movieId}`}
+            tmdbId={routeState.movieId}
+            titleType={routeState.movieType}
+            onBack={handleGoBack}
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}
             onSelectPerson={handleSelectPerson}
           />
         )}
 
-        {currentTab === 'person' && selectedPersonId && (
+        {routeState.tab === 'person' && routeState.personId && (
           <PersonDetail
-            personId={selectedPersonId}
-            onBack={() => {
-              if (selectedMovieId) {
-                setCurrentTab('detail');
-              } else {
-                setCurrentTab('home');
-              }
-            }}
+            key={`person-${routeState.personId}`}
+            personId={routeState.personId}
+            onBack={handleGoBack}
             onSelectMovie={handleSelectMovie}
             onLogMovie={handleOpenLogForMovie}
           />
         )}
 
-        {currentTab === 'profile' && user && (
+        {routeState.tab === 'profile' && (
           <UserProfile
-            username={user.username}
+            username={routeState.profileUsername || (user ? user.username : '')}
             onSelectMovie={handleSelectMovie}
           />
         )}
@@ -224,8 +369,8 @@ function AppContent() {
           onSuccess={() => {
             setLogModalMovie(null);
             setEditingEntry(null);
-            if (currentTab === 'dashboard') {
-              setCurrentTab('dashboard');
+            if (routeState.tab === 'dashboard') {
+              navigateTo({ tab: 'dashboard' }, true);
             }
           }}
         />
@@ -238,8 +383,8 @@ function AppContent() {
           onClose={() => setAuthModalMode(null)}
           onSuccess={() => {
             setAuthModalMode(null);
-            if (currentTab === 'home') {
-              setCurrentTab('dashboard');
+            if (routeState.tab === 'home') {
+              navigateTo({ tab: 'dashboard' });
             }
           }}
         />
@@ -251,10 +396,10 @@ function AppContent() {
           onClose={() => setShowImportModal(false)}
           onSuccess={() => {
             setShowImportModal(false);
-            if (currentTab === 'dashboard') {
+            if (routeState.tab === 'dashboard') {
               window.location.reload();
             } else {
-              setCurrentTab('dashboard');
+              navigateTo({ tab: 'dashboard' });
             }
           }}
         />
