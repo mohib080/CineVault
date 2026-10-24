@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Movie, Genre, api } from '../services/api';
 import { MovieCard } from '../components/MovieCard';
+import { TrailerModal } from '../components/TrailerModal';
 import {
   Shield,
   Sparkles,
@@ -15,7 +16,8 @@ import {
   Filter,
   Loader2,
   ArrowRight,
-  Plus
+  Plus,
+  Play
 } from 'lucide-react';
 
 interface HomeProps {
@@ -60,6 +62,24 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [activeTrailer, setActiveTrailer] = useState<{ key: string; title: string } | null>(null);
+
+  const handleWatchSpotlightTrailer = async (movie: Movie) => {
+    if (movie.trailer_key) {
+      setActiveTrailer({ key: movie.trailer_key, title: movie.title });
+      return;
+    }
+    try {
+      const res = await api.getMovieDetail(movie.tmdb_id);
+      if (res.movie?.trailer_key) {
+        setActiveTrailer({ key: res.movie.trailer_key, title: res.movie.title });
+      } else {
+        onSelectMovie(movie);
+      }
+    } catch {
+      onSelectMovie(movie);
+    }
+  };
 
   // Load discovery or search results
   useEffect(() => {
@@ -380,6 +400,13 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
                       <Plus size={16} /> Quick Log to Vault
                     </button>
                     <button
+                      onClick={() => handleWatchSpotlightTrailer(spotlight)}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.65rem 1.3rem', fontSize: '0.9rem', gap: '0.45rem' }}
+                    >
+                      <Play size={15} fill="#fff" /> Watch Trailer
+                    </button>
+                    <button
                       onClick={() => onSelectMovie(spotlight)}
                       className="btn btn-secondary"
                       style={{ padding: '0.65rem 1.3rem', fontSize: '0.9rem', gap: '0.45rem' }}
@@ -396,10 +423,22 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
 
       {/* Discovery Navigation & Controls */}
       {!searchQuery && (
-        <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Category Tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Category Tabs - Sliding Pill Dock */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: 'rgba(10, 14, 22, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '4px',
+                borderRadius: 'var(--radius-full)',
+                flexWrap: 'wrap',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)'
+              }}
+            >
               {[
                 { id: 'trending', label: 'Trending This Week', icon: Flame },
                 { id: 'popular', label: 'Popular Cinema', icon: Star },
@@ -416,18 +455,19 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.45rem',
-                      padding: '0.5rem 1rem',
+                      padding: '0.5rem 1.15rem',
                       borderRadius: 'var(--radius-full)',
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       cursor: 'pointer',
-                      background: isActive ? 'var(--accent-gold)' : 'transparent',
-                      color: isActive ? '#000' : 'var(--text-muted)',
-                      border: isActive ? '1px solid var(--accent-gold)' : '1px solid var(--border-subtle)',
-                      transition: 'all 0.2s ease'
+                      background: isActive ? 'var(--accent-gold-gradient)' : 'transparent',
+                      color: isActive ? '#050a12' : 'var(--text-muted)',
+                      border: 'none',
+                      boxShadow: isActive ? '0 2px 14px var(--accent-gold-glow)' : 'none',
+                      transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)'
                     }}
                   >
-                    <Icon size={15} />
+                    <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
                     {tab.label}
                   </button>
                 );
@@ -444,13 +484,14 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
                   setSelectedYear(val === 0 ? null : val);
                 }}
                 style={{
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-subtle)',
+                  background: 'rgba(10, 14, 22, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   color: 'var(--text-primary)',
-                  padding: '0.45rem 0.85rem',
-                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.5rem 0.95rem',
+                  borderRadius: 'var(--radius-full)',
                   fontSize: '0.82rem',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)'
                 }}
               >
                 {DECADES.map((d) => (
@@ -467,15 +508,17 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
             <button
               onClick={() => setSelectedGenre(null)}
               style={{
-                padding: '0.35rem 0.8rem',
+                padding: '0.35rem 0.85rem',
                 borderRadius: 'var(--radius-full)',
                 fontSize: '0.78rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                background: selectedGenre === null ? 'rgba(0, 229, 255, 0.15)' : 'var(--bg-input)',
+                background: selectedGenre === null ? 'rgba(0, 229, 255, 0.18)' : 'rgba(10, 14, 22, 0.75)',
                 border: selectedGenre === null ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                color: selectedGenre === null ? 'var(--accent-cyan)' : 'var(--text-muted)'
+                color: selectedGenre === null ? '#fff' : 'var(--text-muted)',
+                boxShadow: selectedGenre === null ? '0 0 12px rgba(0, 229, 255, 0.25)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
               }}
             >
               All Genres
@@ -487,15 +530,17 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
                   key={g.id}
                   onClick={() => setSelectedGenre(isSelected ? null : g.id)}
                   style={{
-                    padding: '0.35rem 0.8rem',
+                    padding: '0.35rem 0.85rem',
                     borderRadius: 'var(--radius-full)',
                     fontSize: '0.78rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
-                    background: isSelected ? 'rgba(0, 229, 255, 0.15)' : 'var(--bg-input)',
+                    background: isSelected ? 'rgba(0, 229, 255, 0.18)' : 'rgba(10, 14, 22, 0.75)',
                     border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                    color: isSelected ? 'var(--accent-cyan)' : 'var(--text-muted)'
+                    color: isSelected ? '#fff' : 'var(--text-muted)',
+                    boxShadow: isSelected ? '0 0 12px rgba(0, 229, 255, 0.25)' : 'none',
+                    transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
                   }}
                 >
                   {g.name}
@@ -593,6 +638,15 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
             </div>
           )}
         </>
+      )}
+
+      {/* Trailer Modal */}
+      {activeTrailer && (
+        <TrailerModal
+          trailerKey={activeTrailer.key}
+          title={activeTrailer.title}
+          onClose={() => setActiveTrailer(null)}
+        />
       )}
     </div>
   );

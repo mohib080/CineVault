@@ -97,30 +97,40 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '180px 1fr',
+          gridTemplateColumns: '170px 1fr',
           gap: '2.5rem',
-          alignItems: 'start',
+          alignItems: 'center',
           background: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '2rem',
+          backdropFilter: 'blur(16px)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '2.5rem',
           border: '1px solid var(--border-subtle)',
           boxShadow: 'var(--shadow-card)',
           marginBottom: '2.5rem'
         }}
       >
-        <div style={{ position: 'relative' }}>
-          <img
-            src={profileUrl}
-            alt={person.name}
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+          <div
             style={{
-              width: '100%',
-              borderRadius: 'var(--radius-md)',
-              aspectRatio: '2/3',
-              objectFit: 'cover',
-              border: '2px solid var(--border-glow)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+              width: 150,
+              height: 150,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              border: '3px solid var(--accent-cyan)',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 229, 255, 0.25)',
+              flexShrink: 0
             }}
-          />
+          >
+            <img
+              src={profileUrl}
+              alt={person.name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -128,20 +138,22 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
               <span
                 style={{
-                  background: 'rgba(217, 119, 6, 0.15)',
+                  background: 'linear-gradient(135deg, rgba(245, 179, 53, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
                   color: 'var(--accent-gold)',
-                  border: '1px solid rgba(217, 119, 6, 0.3)',
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid rgba(245, 179, 53, 0.35)',
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: 'var(--radius-full)',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  fontFamily: 'var(--font-mono)'
                 }}
               >
                 {person.known_for_department || 'Filmmaker'}
               </span>
             </div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: '2.6rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)', lineHeight: 1.15, letterSpacing: '-0.5px' }}>
               {person.name}
             </h1>
           </div>

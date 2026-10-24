@@ -36,6 +36,7 @@ build/
 .DS_Store
 
 # Antigravity & Agent configs
+.agent/
 .agents/
 .gemini/
 mcp_config.json

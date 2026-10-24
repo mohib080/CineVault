@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Movie } from '../services/api';
-import { Plus, Film, Star, Tv } from 'lucide-react';
+import { Plus, Film, Star, Tv, ArrowUpRight, Eye } from 'lucide-react';
 
 interface MovieCardProps {
   movie: Movie & { rating?: number; vote_average?: number };
@@ -9,6 +9,9 @@ interface MovieCardProps {
 }
 
 export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick }) => {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
   const hasPoster = Boolean(movie.poster_path && movie.poster_path.trim() !== '');
   const posterUrl = hasPoster
     ? (movie.poster_path!.startsWith('http') ? movie.poster_path : `https://image.tmdb.org/t/p/w500${movie.poster_path}`)
@@ -17,19 +20,38 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
   const isSeries = movie.title_type === 'series' || movie.overview?.includes('[TV Series]');
   const score = movie.vote_average || movie.rating;
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: -(y * 10), y: x * 10 });
+  };
+
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+  };
+
   return (
     <div
       className="movie-card group"
       onClick={() => onClick && onClick(movie)}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{
         position: 'relative',
         background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: 'var(--radius-lg)',
         overflow: 'hidden',
-        border: '1px solid var(--border-subtle)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+        border: isHovered ? '1px solid rgba(0, 229, 255, 0.45)' : '1px solid var(--border-subtle)',
+        boxShadow: isHovered
+          ? '0 20px 45px -10px rgba(0, 0, 0, 0.85), 0 0 24px rgba(0, 229, 255, 0.2)'
+          : '0 4px 16px rgba(0, 0, 0, 0.4)',
         cursor: 'pointer',
-        transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+        transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(${isHovered ? -5 : 0}px)`,
+        transition: 'transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease',
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -54,7 +76,8 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              transition: 'transform 0.4s ease'
+              transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+              transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)'
             }}
           />
         ) : (
@@ -119,14 +142,15 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
             style={{
               fontSize: '0.65rem',
               fontWeight: 800,
-              padding: '2px 6px',
-              borderRadius: 4,
+              padding: '2px 7px',
+              borderRadius: 'var(--radius-full)',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              background: isSeries ? 'rgba(245, 179, 53, 0.85)' : 'rgba(10, 13, 18, 0.75)',
+              background: isSeries ? 'rgba(245, 179, 53, 0.9)' : 'rgba(10, 14, 22, 0.82)',
               color: isSeries ? '#000' : 'rgba(255, 255, 255, 0.9)',
               backdropFilter: 'blur(8px)',
-              border: isSeries ? 'none' : '1px solid rgba(255, 255, 255, 0.15)'
+              border: isSeries ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+              fontFamily: 'var(--font-mono)'
             }}
           >
             {isSeries ? 'Series' : 'Film'}
@@ -141,12 +165,13 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
                 gap: 3,
                 fontSize: '0.72rem',
                 fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: 4,
-                background: 'rgba(10, 13, 18, 0.85)',
+                padding: '2px 7px',
+                borderRadius: 'var(--radius-full)',
+                background: 'rgba(10, 14, 22, 0.85)',
                 color: 'var(--accent-gold)',
                 backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(245, 179, 53, 0.35)'
+                border: '1px solid rgba(245, 179, 53, 0.35)',
+                fontFamily: 'var(--font-mono)'
               }}
             >
               <Star size={11} fill="var(--accent-gold)" />
@@ -162,45 +187,54 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
             bottom: 0,
             left: 0,
             right: 0,
-            height: '40%',
-            background: 'linear-gradient(to top, rgba(14, 19, 27, 0.95), transparent)',
+            height: '45%',
+            background: 'linear-gradient(to top, rgba(7, 9, 14, 0.95), transparent)',
             pointerEvents: 'none'
           }}
         />
 
-        {/* Quick Log Button on Hover */}
-        {onLogClick && (
-          <button
-            type="button"
-            className="btn-quick-log"
-            style={{
-              position: 'absolute',
-              bottom: 8,
-              right: 8,
-              padding: '0.35rem 0.65rem',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #00e5ff 0%, #0284c7 100%)',
-              color: '#051424',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              zIndex: 3,
-              boxShadow: '0 4px 12px rgba(0, 229, 255, 0.4)',
-              cursor: 'pointer',
-              border: 'none',
-              transition: 'transform 0.2s ease'
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onLogClick(movie);
-            }}
-            title="Log this film to your Vault"
-          >
-            <Plus size={13} strokeWidth={2.8} /> Log
-          </button>
-        )}
+        {/* Quick-Vault Interactive Action Buttons */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            zIndex: 3
+          }}
+        >
+          {onLogClick && (
+            <button
+              type="button"
+              className="btn-quick-log"
+              style={{
+                padding: '0.35rem 0.75rem',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                background: 'var(--accent-cyan-gradient)',
+                color: '#051424',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                boxShadow: '0 4px 14px rgba(0, 229, 255, 0.45)',
+                cursor: 'pointer',
+                border: 'none',
+                transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onLogClick(movie);
+              }}
+              title="Log this film to your Vault"
+            >
+              <Plus size={13} strokeWidth={2.8} /> Log
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="movie-card-info" style={{ padding: '0.75rem 0.85rem' }}>
@@ -208,8 +242,9 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
           className="movie-card-title"
           title={movie.title}
           style={{
-            fontSize: '0.9rem',
+            fontSize: '0.92rem',
             fontWeight: 700,
+            fontFamily: 'var(--font-display)',
             color: 'var(--text-main)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -227,17 +262,20 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
             justifyContent: 'space-between',
             marginTop: '0.25rem',
             fontSize: '0.78rem',
-            color: 'var(--text-muted)'
+            color: 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)'
           }}
         >
           <span>{movie.release_year || '—'}</span>
           {movie.director && (
             <span
               style={{
-                maxWidth: '110px',
+                maxWidth: '105px',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-sans)',
+                color: 'var(--text-secondary)'
               }}
               title={movie.director}
             >

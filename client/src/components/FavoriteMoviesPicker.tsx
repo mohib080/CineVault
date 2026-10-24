@@ -131,14 +131,24 @@ export const FavoriteMoviesPicker: React.FC<FavoriteMoviesPickerProps> = ({
                 key={slotNum}
                 style={{
                   position: 'relative',
-                  borderRadius: 'var(--radius-md)',
+                  borderRadius: 'var(--radius-lg)',
                   overflow: 'hidden',
                   aspectRatio: '2/3',
-                  boxShadow: 'var(--shadow-card)',
-                  border: '1px solid var(--border-subtle)',
+                  boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.8), 0 0 25px rgba(245, 179, 53, 0.18)',
+                  border: '1px solid rgba(245, 179, 53, 0.35)',
                   background: 'var(--bg-card)',
                   cursor: onSelectMovie ? 'pointer' : 'default',
-                  transition: 'all 0.25s ease'
+                  transition: 'all 0.28s cubic-bezier(0.22, 1, 0.36, 1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.borderColor = 'var(--accent-gold)';
+                  e.currentTarget.style.boxShadow = '0 16px 40px -4px rgba(0, 0, 0, 0.9), 0 0 35px rgba(245, 179, 53, 0.35)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.borderColor = 'rgba(245, 179, 53, 0.35)';
+                  e.currentTarget.style.boxShadow = '0 12px 32px -4px rgba(0, 0, 0, 0.8), 0 0 25px rgba(245, 179, 53, 0.18)';
                 }}
                 onClick={() => {
                   if (onSelectMovie) {

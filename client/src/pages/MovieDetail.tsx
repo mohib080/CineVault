@@ -104,10 +104,10 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
           marginBottom: '2.5rem',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           background: backdropUrl
-            ? `linear-gradient(to top, #06080c 15%, rgba(6, 8, 12, 0.82) 65%, rgba(6, 8, 12, 0.5) 100%), url(${backdropUrl}) center/cover no-repeat`
+            ? `linear-gradient(to bottom, rgba(7, 9, 14, 0.4) 0%, rgba(7, 9, 14, 0.85) 60%, #07090e 100%), url(${backdropUrl}) center/cover no-repeat`
             : 'var(--bg-card)',
-          padding: '2.5rem',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 229, 255, 0.08)'
+          padding: '3rem 2.5rem 2.5rem',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(0, 229, 255, 0.08)'
         }}
       >
         <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -125,16 +125,16 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
             }}
           />
 
-          <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+          <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.8px' }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.8px', color: '#fff' }}>
                 {movie.title}
               </h1>
               {movie.tagline && (
                 <p
                   style={{
                     color: 'var(--accent-gold)',
-                    fontSize: '1.05rem',
+                    fontSize: '1.1rem',
                     fontStyle: 'italic',
                     marginTop: '0.4rem',
                     opacity: 0.95
@@ -145,27 +145,33 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
               )}
             </div>
 
-            {/* Meta tags & genres */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.92rem', flexWrap: 'wrap' }}>
+            {/* Meta Tags Bento Strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
               {movie.release_year && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)' }}>
-                  <Calendar size={14} color="var(--accent-gold)" /> {movie.release_year}
-                </span>
+                <div style={{ background: 'rgba(14, 18, 26, 0.75)', backdropFilter: 'blur(10px)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>Release Year</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-mono)' }}>{movie.release_year}</span>
+                </div>
               )}
               {movie.runtime && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)' }}>
-                  <Clock size={14} color="var(--accent-gold)" /> {movie.runtime} min
-                </span>
+                <div style={{ background: 'rgba(14, 18, 26, 0.75)', backdropFilter: 'blur(10px)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>Runtime</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>{movie.runtime} min</span>
+                </div>
               )}
               {movie.director && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)' }}>
-                  <User size={14} color="var(--accent-gold)" /> Directed by {movie.director}
-                </span>
+                <div style={{ background: 'rgba(14, 18, 26, 0.75)', backdropFilter: 'blur(10px)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>Director</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{movie.director}</span>
+                </div>
               )}
               {(movie.vote_average || movie.rating) && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-gold)', fontWeight: 700, background: 'rgba(245, 179, 53, 0.12)', border: '1px solid rgba(245, 179, 53, 0.3)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)' }}>
-                  <Star size={14} fill="var(--accent-gold)" /> {(movie.vote_average || movie.rating)?.toFixed(1)} / 10
-                </span>
+                <div style={{ background: 'rgba(245, 179, 53, 0.1)', backdropFilter: 'blur(10px)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(245, 179, 53, 0.3)' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>TMDB Rating</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: 'var(--font-mono)' }}>
+                    <Star size={13} fill="var(--accent-gold)" /> {(movie.vote_average || movie.rating)?.toFixed(1)} / 10
+                  </span>
+                </div>
               )}
             </div>
 
@@ -176,12 +182,12 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                   <span
                     key={g.id}
                     style={{
-                      background: 'rgba(0, 229, 255, 0.08)',
-                      border: '1px solid rgba(0, 229, 255, 0.22)',
-                      padding: '0.25rem 0.75rem',
+                      background: 'rgba(0, 229, 255, 0.1)',
+                      border: '1px solid rgba(0, 229, 255, 0.25)',
+                      padding: '0.25rem 0.8rem',
                       borderRadius: 'var(--radius-full)',
                       fontSize: '0.78rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       color: 'var(--accent-cyan)'
                     }}
                   >
@@ -192,7 +198,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
             )}
 
             {movie.overview && (
-              <p style={{ color: '#d0d7de', fontSize: '1.02rem', lineHeight: 1.65, maxWidth: 760 }}>
+              <p style={{ color: '#d0d7de', fontSize: '1.02rem', lineHeight: 1.65, maxWidth: 780 }}>
                 {movie.overview}
               </p>
             )}
@@ -205,7 +211,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                 className="btn btn-gold"
                 style={{ padding: '0.7rem 1.6rem', fontSize: '0.92rem' }}
               >
-                <Plus size={17} /> Log This Film to Vault
+                <Plus size={17} strokeWidth={2.8} /> Log This Film to Vault
               </button>
 
               {movie.trailer_key && (
@@ -229,11 +235,11 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
         </div>
       </div>
 
-      {/* Cast & Crew Carousel */}
+      {/* Cast & Crew Carousel with Circular Avatars */}
       {movie.cast && movie.cast.length > 0 && (
         <div style={{ marginBottom: '3rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)' }}>
               <Sparkles size={18} color="var(--accent-gold)" /> Top Cast & Filmmakers
             </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -244,9 +250,9 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
           <div
             style={{
               display: 'flex',
-              gap: '1rem',
+              gap: '1.25rem',
               overflowX: 'auto',
-              paddingBottom: '0.75rem'
+              paddingBottom: '1rem'
             }}
           >
             {movie.cast.map((actor) => {
@@ -260,39 +266,57 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                 <div
                   key={actor.person_id}
                   onClick={() => onSelectPerson && onSelectPerson(actor.person_id)}
-                  className="cast-chip-card"
-                  style={{ cursor: onSelectPerson ? 'pointer' : 'default' }}
+                  style={{
+                    minWidth: 110,
+                    maxWidth: 110,
+                    textAlign: 'center',
+                    cursor: onSelectPerson ? 'pointer' : 'default',
+                    transition: 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
                 >
-                  <img
-                    src={photoUrl}
-                    alt={actor.name}
-                    style={{ width: '100%', height: 145, objectFit: 'cover', transition: 'transform 0.25s ease' }}
-                  />
-                  <div style={{ padding: '0.6rem 0.4rem' }}>
-                    <p
-                      style={{
-                        fontSize: '0.82rem',
-                        fontWeight: 700,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        color: 'var(--text-primary)'
-                      }}
-                    >
-                      {actor.name}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: '0.72rem',
-                        color: 'var(--text-muted)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {actor.character_name || 'Actor'}
-                    </p>
+                  <div
+                    style={{
+                      width: 82,
+                      height: 82,
+                      borderRadius: '50%',
+                      margin: '0 auto 0.6rem',
+                      overflow: 'hidden',
+                      border: '2px solid rgba(0, 229, 255, 0.35)',
+                      boxShadow: '0 6px 18px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 229, 255, 0.15)',
+                      transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                    }}
+                  >
+                    <img
+                      src={photoUrl}
+                      alt={actor.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </div>
+                  <p
+                    style={{
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    {actor.name}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--text-muted)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    {actor.character_name || 'Artist'}
+                  </p>
                 </div>
               );
             })}

@@ -69,79 +69,84 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onSelectMovi
       {/* Profile Header */}
       <div
         style={{
-          background: 'var(--bg-secondary)',
+          background: 'var(--bg-card)',
+          backdropFilter: 'blur(20px)',
           border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '2rem',
+          borderRadius: 'var(--radius-xl)',
+          padding: '2.5rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1.5rem',
-          marginBottom: '2rem'
+          gap: '2rem',
+          marginBottom: '2.5rem',
+          boxShadow: 'var(--shadow-card)'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div
             style={{
-              width: 64,
-              height: 64,
+              width: 76,
+              height: 76,
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #00e5ff 0%, #a855f7 100%)',
+              background: 'linear-gradient(135deg, #00e5ff 0%, #3b82f6 50%, #a855f7 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#000',
+              color: '#051424',
               fontWeight: 800,
-              fontSize: '1.8rem'
+              fontSize: '2rem',
+              boxShadow: '0 8px 24px rgba(0, 229, 255, 0.35)'
             }}
           >
             {user.username.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{user.username}</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: '#fff', letterSpacing: '-0.5px' }}>
+              {user.username}
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '0.2rem' }}>
               Joined {typeof user.created_at === 'string' ? user.created_at.split('T')[0] : 'Recently'} •{' '}
               {user.isOwner ? (
-                <span style={{ color: 'var(--accent-cyan)' }}>Viewing your own profile</span>
+                <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>Viewing your personal profile</span>
               ) : (
-                'Public Profile'
+                'Public CineVault Profile'
               )}
             </p>
           </div>
         </div>
 
-        {/* Stats strip */}
-        <div style={{ display: 'flex', gap: '2rem' }}>
+        {/* Stats Strip */}
+        <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
               {stats.totalFilms}
             </span>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Films
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+              Films Logged
             </span>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
               {stats.totalHoursWatched}
             </span>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
               Hours
             </span>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-gold)' }}>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)' }}>
               {stats.avgRating}
             </span>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
               Avg Rating
             </span>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
               {stats.listsCount}
             </span>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
               Lists
             </span>
           </div>
@@ -208,17 +213,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onSelectMovi
       {tab === 'stats' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
           {/* Rating Histogram */}
-          <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="bento-card">
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)' }}>
               <BarChart2 size={18} color="var(--accent-gold)" /> Rating Distribution
             </h3>
-            <div style={{ display: 'flex', alignItems: 'flex-end', height: 120, gap: 8, padding: '0 0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', height: 130, gap: 8, padding: '0 0.5rem' }}>
               {ratingSteps.map((step) => {
                 const count = stats.ratingDistribution?.[step] || 0;
-                const heightPct = count > 0 ? Math.max(15, (count / maxBarCount) * 100) : 4;
+                const heightPct = count > 0 ? Math.max(16, (count / maxBarCount) * 100) : 5;
                 return (
                   <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '0.7rem', color: count > 0 ? 'var(--accent-gold)' : 'transparent', marginBottom: 4, fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.72rem', color: count > 0 ? 'var(--accent-gold)' : 'transparent', marginBottom: 4, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
                       {count}
                     </span>
                     <div
@@ -226,11 +231,13 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onSelectMovi
                       style={{
                         width: '100%',
                         height: `${heightPct}%`,
-                        background: count > 0 ? 'var(--accent-gold)' : 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: '2px 2px 0 0'
+                        background: count > 0 ? 'var(--accent-gold-gradient)' : 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: '3px 3px 0 0',
+                        boxShadow: count > 0 ? '0 0 10px var(--accent-gold-glow)' : 'none',
+                        transition: 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)'
                       }}
                     />
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 5, fontFamily: 'var(--font-mono)' }}>
                       {step}
                     </span>
                   </div>
@@ -240,16 +247,16 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onSelectMovi
           </div>
 
           {/* Top Genres */}
-          <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="bento-card">
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)' }}>
               <Film size={18} color="var(--accent-cyan)" /> Most Watched Genres
             </h3>
             {stats.topGenres && stats.topGenres.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {stats.topGenres.map((g) => (
                   <div key={g.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{g.name}</span>
-                    <span style={{ background: 'rgba(0, 229, 255, 0.1)', color: 'var(--accent-cyan)', padding: '0.15rem 0.5rem', borderRadius: 4, fontSize: '0.78rem', fontWeight: 700 }}>
+                    <span style={{ background: 'rgba(0, 229, 255, 0.12)', border: '1px solid rgba(0, 229, 255, 0.25)', color: 'var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: 'var(--radius-full)', fontSize: '0.78rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
                       {g.count} films
                     </span>
                   </div>
@@ -261,16 +268,16 @@ export const UserProfile: React.FC<UserProfileProps> = ({ username, onSelectMovi
           </div>
 
           {/* Top Directors */}
-          <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="bento-card">
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)' }}>
               <Award size={18} color="var(--accent-gold)" /> Most Watched Directors
             </h3>
             {stats.topDirectors && stats.topDirectors.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {stats.topDirectors.map((d) => (
                   <div key={d.director} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{d.director}</span>
-                    <span style={{ background: 'rgba(217, 119, 6, 0.15)', color: 'var(--accent-gold)', padding: '0.15rem 0.5rem', borderRadius: 4, fontSize: '0.78rem', fontWeight: 700 }}>
+                    <span style={{ background: 'rgba(245, 179, 53, 0.12)', border: '1px solid rgba(245, 179, 53, 0.3)', color: 'var(--accent-gold)', padding: '0.2rem 0.6rem', borderRadius: 'var(--radius-full)', fontSize: '0.78rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
                       {d.count} films
                     </span>
                   </div>

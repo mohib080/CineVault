@@ -19,7 +19,8 @@ import {
   Heart,
   Tag,
   Clock,
-  Film
+  Film,
+  Star
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -179,46 +180,86 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
         onSelectMovie={onSelectMovie}
       />
 
-      {/* Analytics & Stats Bar */}
+      {/* Analytics & Stats Bento Grid */}
       <div
+        className="bento-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: '1.25rem',
-          marginBottom: '2rem'
+          marginBottom: '2.5rem'
         }}
       >
-        <div style={{ background: 'var(--bg-card)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Films Logged</span>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>{totalLogs}</h2>
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
+              Films Logged
+            </span>
+            <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: 'rgba(0, 229, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-cyan)' }}>
+              <Film size={16} />
+            </div>
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+              {totalLogs}
+            </h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>
+              {rewatches > 0 ? `${rewatches} rewatches logged` : 'Personal vault archive'}
+            </span>
+          </div>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Hours Watched</span>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '0.25rem' }}>
-            {totalHours} <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)' }}>hrs</span>
-          </h2>
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
+              Hours Screened
+            </span>
+            <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-emerald)' }}>
+              <Clock size={16} />
+            </div>
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--accent-emerald)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+              {totalHours} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>hrs</span>
+            </h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>
+              {(totalHours / 24).toFixed(1)} continuous days of cinema
+            </span>
+          </div>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Average Rating</span>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '0.25rem' }}>
-            {avgRating} {avgRating !== '—' && <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 5.0</span>}
-          </h2>
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
+              Average Rating
+            </span>
+            <div style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: 'rgba(245, 179, 53, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-gold)' }}>
+              <Star size={16} fill="var(--accent-gold)" />
+            </div>
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+              {avgRating} {avgRating !== '—' && <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ 5.0</span>}
+            </h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>
+              {ratings.length} titles rated
+            </span>
+          </div>
         </div>
 
-        {/* Mini Rating Distribution Chart */}
-        <div style={{ background: 'var(--bg-card)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {/* Rating Distribution Histogram Bento Card */}
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
               Rating Spread
             </span>
-            <BarChart2 size={14} color="var(--accent-gold)" />
+            <BarChart2 size={16} color="var(--accent-gold)" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', height: 44, gap: 4 }}>
+
+          <div style={{ display: 'flex', alignItems: 'flex-end', height: 55, gap: 5, marginTop: '1rem' }}>
             {ratingSteps.map((step) => {
               const count = distribution[step] || 0;
-              const heightPct = count > 0 ? Math.max(15, (count / maxCount) * 100) : 6;
+              const heightPct = count > 0 ? Math.max(16, (count / maxCount) * 100) : 6;
               return (
                 <div
                   key={step}
@@ -226,13 +267,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
                   style={{
                     flex: 1,
                     height: `${heightPct}%`,
-                    background: count > 0 ? 'var(--accent-gold)' : 'rgba(255, 255, 255, 0.08)',
-                    borderRadius: '2px 2px 0 0',
-                    transition: 'all 0.2s ease'
+                    background: count > 0 ? 'var(--accent-gold-gradient)' : 'rgba(255, 255, 255, 0.08)',
+                    borderRadius: '3px 3px 0 0',
+                    boxShadow: count > 0 ? '0 0 10px var(--accent-gold-glow)' : 'none',
+                    transition: 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)'
                   }}
                 />
               );
             })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '0.4rem', fontFamily: 'var(--font-mono)' }}>
+            <span>½★</span>
+            <span>★★½</span>
+            <span>★★★★★</span>
           </div>
         </div>
       </div>
@@ -243,36 +291,76 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'var(--bg-secondary)',
+          background: 'rgba(10, 14, 22, 0.8)',
+          backdropFilter: 'blur(16px)',
           padding: '0.75rem 1.25rem',
-          borderRadius: 'var(--radius-md)',
+          borderRadius: 'var(--radius-full)',
           border: '1px solid var(--border-subtle)',
-          marginBottom: '1.5rem',
+          marginBottom: '2rem',
           flexWrap: 'wrap',
           gap: '1rem'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-          <Filter size={15} /> <span>Filter by Visibility:</span>
+          <Filter size={15} color="var(--accent-cyan)" /> <span style={{ fontWeight: 600 }}>Filter Visibility:</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {(['ALL', 'PUBLIC', 'UNLISTED', 'PRIVATE'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setFilter(mode)}
-              className="btn btn-secondary"
-              style={{
-                padding: '0.35rem 0.8rem',
-                fontSize: '0.8rem',
-                background: filter === mode ? 'var(--bg-card-hover)' : 'transparent',
-                borderColor: filter === mode ? 'var(--accent-cyan)' : 'var(--border-subtle)',
-                color: filter === mode ? 'var(--text-main)' : 'var(--text-muted)'
-              }}
-            >
-              {mode}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          {(['ALL', 'PUBLIC', 'UNLISTED', 'PRIVATE'] as const).map((mode) => {
+            const isActive = filter === mode;
+            let activeStyle: React.CSSProperties = {
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+              color: '#fff'
+            };
+            if (isActive) {
+              if (mode === 'PUBLIC') {
+                activeStyle = {
+                  background: 'var(--priv-public-bg)',
+                  borderColor: 'var(--priv-public-border)',
+                  color: 'var(--priv-public-text)',
+                  boxShadow: 'var(--priv-public-glow)'
+                };
+              } else if (mode === 'UNLISTED') {
+                activeStyle = {
+                  background: 'var(--priv-unlisted-bg)',
+                  borderColor: 'var(--priv-unlisted-border)',
+                  color: 'var(--priv-unlisted-text)',
+                  boxShadow: 'var(--priv-unlisted-glow)'
+                };
+              } else if (mode === 'PRIVATE') {
+                activeStyle = {
+                  background: 'var(--priv-private-bg)',
+                  borderColor: 'var(--priv-private-border)',
+                  color: 'var(--priv-private-text)',
+                  boxShadow: 'var(--priv-private-glow)'
+                };
+              }
+            }
+
+            return (
+              <button
+                key={mode}
+                onClick={() => setFilter(mode)}
+                style={{
+                  padding: '0.35rem 0.85rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  borderRadius: 'var(--radius-full)',
+                  border: isActive ? '1px solid' : '1px solid var(--border-subtle)',
+                  background: isActive ? activeStyle.background : 'transparent',
+                  borderColor: isActive ? activeStyle.borderColor : 'var(--border-subtle)',
+                  color: isActive ? activeStyle.color : 'var(--text-muted)',
+                  boxShadow: isActive ? activeStyle.boxShadow : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              >
+                {mode === 'ALL' ? 'All Logs' : mode}
+              </button>
+            );
+          })}
         </div>
       </div>
 

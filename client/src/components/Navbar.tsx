@@ -327,7 +327,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className={`nav-item ${currentTab === 'home' ? 'active' : ''}`}
           >
-            <Film size={16} /> Explore
+            <Film size={15} /> <span>Explore</span>
+            {currentTab === 'home' && (
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: '3px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '14px',
+                  height: '2px',
+                  borderRadius: '2px',
+                  background: 'var(--accent-cyan)',
+                  boxShadow: '0 0 8px var(--accent-cyan)'
+                }}
+              />
+            )}
           </button>
 
           {user && (
@@ -336,14 +351,44 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => onSelectTab('dashboard')}
                 className={`nav-item ${currentTab === 'dashboard' ? 'active' : ''}`}
               >
-                <Lock size={16} /> My Vault
+                <Lock size={15} /> <span>My Vault</span>
+                {currentTab === 'dashboard' && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '3px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '14px',
+                      height: '2px',
+                      borderRadius: '2px',
+                      background: 'var(--accent-cyan)',
+                      boxShadow: '0 0 8px var(--accent-cyan)'
+                    }}
+                  />
+                )}
               </button>
 
               <button
                 onClick={() => onSelectTab('lists')}
                 className={`nav-item ${currentTab === 'lists' ? 'active' : ''}`}
               >
-                <Bookmark size={16} /> Lists
+                <Bookmark size={15} /> <span>Lists</span>
+                {currentTab === 'lists' && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '3px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '14px',
+                      height: '2px',
+                      borderRadius: '2px',
+                      background: 'var(--accent-cyan)',
+                      boxShadow: '0 0 8px var(--accent-cyan)'
+                    }}
+                  />
+                )}
               </button>
             </>
           )}
@@ -353,46 +398,72 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onQuickLog}
               className="btn btn-gold"
-              style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
+              style={{ padding: '0.42rem 0.95rem', fontSize: '0.82rem' }}
             >
-              <Plus size={15} strokeWidth={2.8} /> Log Film
+              <Plus size={14} strokeWidth={2.8} /> Log Film
             </button>
           )}
 
           {/* User Section */}
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <button
                 onClick={() => onSelectTab('profile')}
-                className="nav-item"
-                style={{ fontWeight: 700, color: 'var(--text-main)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.28rem 0.75rem 0.28rem 0.35rem',
+                  borderRadius: 'var(--radius-full)',
+                  border: currentTab === 'profile' ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: currentTab === 'profile' ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
+                }}
                 title="View your public profile"
               >
-                <UserIcon size={15} color="var(--accent-cyan)" />
-                <span>{user.username}</span>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #00e5ff 0%, #3b82f6 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#051424',
+                    fontWeight: 800,
+                    fontSize: '0.72rem'
+                  }}
+                >
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  {user.username}
+                </span>
               </button>
               <button
                 onClick={logout}
                 className="btn btn-secondary"
-                style={{ padding: '0.4rem 0.65rem' }}
+                style={{ padding: '0.38rem 0.6rem', borderRadius: 'var(--radius-full)' }}
                 title="Sign out"
               >
-                <LogOut size={15} />
+                <LogOut size={14} />
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 onClick={() => onOpenAuth('login')}
                 className="btn btn-secondary"
-                style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
+                style={{ padding: '0.42rem 0.85rem', fontSize: '0.82rem' }}
               >
                 Sign In
               </button>
               <button
                 onClick={() => onOpenAuth('register')}
                 className="btn btn-primary"
-                style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
+                style={{ padding: '0.42rem 0.85rem', fontSize: '0.82rem' }}
               >
                 Create Vault
               </button>
