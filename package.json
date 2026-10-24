@@ -4,7 +4,7 @@
   "description": "Personal Movie Diary & Tracker with Granular Privacy",
   "main": "server/dist/index.js",
   "scripts": {
-    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server && npm run build --prefix server",
+    "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install && npm --prefix server run build",
     "start": "npm start --prefix server",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
