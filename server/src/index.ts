@@ -23,16 +23,27 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// API Routes
+// API Routes (mounted with and without /api for universal serverless compatibility)
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
+
 app.use('/api/movies', moviesRoutes);
+app.use('/movies', moviesRoutes);
+
 app.use('/api/diary', diaryRoutes);
+app.use('/diary', diaryRoutes);
+
 app.use('/api/lists', listsRoutes);
+app.use('/lists', listsRoutes);
+
 app.use('/api/users', usersRoutes);
+app.use('/users', usersRoutes);
+
 app.use('/api/people', peopleRoutes);
+app.use('/people', peopleRoutes);
 
 // Health check endpoint
-app.get('/api/health', async (_req, res) => {
+app.get(['/api/health', '/health'], async (_req, res) => {
   const db = await getDb();
   res.json({
     status: 'ok',

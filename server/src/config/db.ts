@@ -1,7 +1,15 @@
 import { Pool } from 'pg';
 import fs from 'fs';
 import path from 'path';
-import Database from 'better-sqlite3';
+import { POSTGRES_SCHEMA_SQL } from '../db/schema';
+
+// Dynamically load better-sqlite3 safely (native binary may not be available on cloud serverless runtimes)
+let DatabaseConstructor: any = null;
+try {
+  DatabaseConstructor = require('better-sqlite3');
+} catch {
+  // Not available on serverless runtimes
+}
 
 export interface QueryResult<T = any> {
   rows: T[];
@@ -17,9 +25,14 @@ let dbInstance: IDatabase | null = null;
 
 // SQLite fallback storage
 class SQLiteFallbackDatabase implements IDatabase {
-  private db: Database.Database;
+  private db: any;
 
   constructor() {
+    if (!DatabaseConstructor) {
+      throw new Error(
+        'PostgreSQL connection failed and local SQLite is unavailable in this serverless environment. Please set DATABASE_URL in your Vercel project environment variables.'
+      );
+    }
     // Use /tmp on Vercel/serverless environments, D:\cinevault_data if available, else local root
     const dbPath = process.env.SQLITE_PATH || (
       process.env.VERCEL
@@ -28,14 +41,14 @@ class SQLiteFallbackDatabase implements IDatabase {
         ? 'D:\\cinevault_data\\cinevault.sqlite'
         : path.resolve(__dirname, '../../../cinevault_fallback.sqlite')
     );
-    this.db = new Database(dbPath);
+    this.db = new DatabaseConstructor(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('synchronous = NORMAL');
     this.db.pragma('cache_size = -64000');
     this.initTables();
   }
 
-  getRawDb(): Database.Database {
+  getRawDb(): any {
     return this.db;
   }
 
@@ -328,12 +341,10 @@ export async function getDb(): Promise<IDatabase> {
     await client.query('SELECT 1');
     console.log('Connected successfully to PostgreSQL database (pool warmed up & keepAlive active).');
 
-    // Execute schema.sql to ensure tables exist
+    // Execute schema to ensure tables exist
     try {
-      const schemaPath = path.resolve(__dirname, '../db/schema.sql');
-      if (fs.existsSync(schemaPath)) {
-        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-        await client.query(schemaSql);
+      if (POSTGRES_SCHEMA_SQL) {
+        await client.query(POSTGRES_SCHEMA_SQL);
         console.log('PostgreSQL schema initialized successfully.');
       }
     } catch (schemaErr) {
