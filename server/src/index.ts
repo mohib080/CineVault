@@ -7,6 +7,7 @@ import moviesRoutes from './routes/movies';
 import diaryRoutes from './routes/diary';
 import listsRoutes from './routes/lists';
 import usersRoutes from './routes/users';
+import peopleRoutes from './routes/people';
 import { getDb } from './config/db';
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.use('/api/movies', moviesRoutes);
 app.use('/api/diary', diaryRoutes);
 app.use('/api/lists', listsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/people', peopleRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (_req, res) => {

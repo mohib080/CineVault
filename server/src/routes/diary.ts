@@ -4,8 +4,56 @@ import { requireAuth, optionalAuth, AuthenticatedRequest } from '../middleware/a
 import { enforceResourceAccess } from '../middleware/accessControl';
 import { generateShareToken } from '../utils/crypto';
 import { cacheMovie } from './movies';
+import { searchMoviesTMDB } from '../config/tmdb';
 
 const router = Router();
+
+// Robust CSV parser handling quotes, commas inside quotes, and newlines
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  function parseRow(row: string): string[] {
+    const fields: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      if (char === '"') {
+        if (inQuotes && row[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    fields.push(current.trim());
+    return fields;
+  }
+
+  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+  const records: Record<string, string>[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseRow(lines[i]);
+    if (values.length === headers.length) {
+      const rec: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        rec[h] = values[idx];
+      });
+      records.push(rec);
+    }
+  }
+
+  return records;
+}
 
 // Log a movie in CineVault
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -25,6 +73,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
       watched_date,
       is_rewatch,
       contains_spoilers,
+      liked,
+      tags,
       visibility
     } = req.body;
 
@@ -67,13 +117,20 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
 
     // Auto-generate share_token if UNLISTED
     const shareToken = entryVisibility === 'UNLISTED' ? generateShareToken() : null;
-
     const entryWatchedDate = watched_date || new Date().toISOString().split('T')[0];
+
+    // Format tags
+    let formattedTags = '';
+    if (Array.isArray(tags)) {
+      formattedTags = tags.map((t) => t.trim()).filter(Boolean).join(',');
+    } else if (typeof tags === 'string') {
+      formattedTags = tags.trim();
+    }
 
     const result = await db.query(
       `INSERT INTO diary_entries (
-        user_id, tmdb_id, rating, review_text, watched_date, is_rewatch, contains_spoilers, visibility, share_token
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        user_id, tmdb_id, rating, review_text, watched_date, is_rewatch, contains_spoilers, liked, tags, visibility, share_token
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *`,
       [
         userId,
@@ -83,6 +140,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
         entryWatchedDate,
         is_rewatch ? 1 : 0,
         contains_spoilers ? 1 : 0,
+        liked ? 1 : 0,
+        formattedTags,
         entryVisibility,
         shareToken
       ]
@@ -103,6 +162,149 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
   } catch (err: any) {
     console.error('Error logging movie:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to log movie to diary.' });
+  }
+});
+
+// Import Letterboxd CSV (diary.csv or watchlist.csv)
+router.post('/import-csv', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { csvText, default_visibility = 'PRIVATE', type = 'diary' } = req.body;
+
+    if (!csvText || typeof csvText !== 'string' || !csvText.trim()) {
+      res.status(400).json({ error: 'Validation Error', message: 'csvText is required.' });
+      return;
+    }
+
+    const records = parseCSV(csvText);
+    if (records.length === 0) {
+      res.status(400).json({ error: 'Validation Error', message: 'No valid records found in CSV.' });
+      return;
+    }
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    // If watchlist type, create or find "Letterboxd Watchlist" list
+    let targetListId: number | null = null;
+    if (type === 'watchlist') {
+      const existingList = await db.query(
+        `SELECT id FROM movie_lists WHERE user_id = $1 AND is_watchlist = 1 LIMIT 1`,
+        [userId]
+      );
+      if (existingList.rows.length > 0) {
+        targetListId = existingList.rows[0].id;
+      } else {
+        const shareToken = default_visibility === 'UNLISTED' ? generateShareToken() : null;
+        const newList = await db.query(
+          `INSERT INTO movie_lists (user_id, title, description, is_watchlist, visibility, share_token)
+           VALUES ($1, 'My Watchlist', 'Imported from Letterboxd', 1, $2, $3)
+           RETURNING id`,
+          [userId, default_visibility, shareToken]
+        );
+        targetListId = newList.rows[0].id;
+      }
+    }
+
+    for (const record of records) {
+      try {
+        const title = record.name || record.title;
+        if (!title) {
+          skipped++;
+          continue;
+        }
+
+        const rawYear = record.year;
+        const year = rawYear ? parseInt(rawYear, 10) : undefined;
+
+        // Resolve movie via local search or TMDB
+        let tmdbId: number | null = null;
+        const localCheck = await db.query(
+          `SELECT tmdb_id FROM movies WHERE LOWER(title) = LOWER($1) LIMIT 1`,
+          [title.trim()]
+        );
+
+        if (localCheck.rows.length > 0) {
+          tmdbId = localCheck.rows[0].tmdb_id;
+        } else {
+          const tmdbSearch = await searchMoviesTMDB(title);
+          if (tmdbSearch.length > 0) {
+            const matched = year
+              ? tmdbSearch.find((m) => m.release_year === year) || tmdbSearch[0]
+              : tmdbSearch[0];
+            tmdbId = matched.tmdb_id;
+            await cacheMovie(matched);
+          }
+        }
+
+        if (!tmdbId) {
+          skipped++;
+          continue;
+        }
+
+        if (type === 'watchlist' && targetListId) {
+          // Insert into list_items
+          await db.query(
+            `INSERT INTO list_items (list_id, tmdb_id, rank_order)
+             VALUES ($1, $2, $3)
+             ON CONFLICT DO NOTHING`,
+            [targetListId, tmdbId, imported + 1]
+          );
+          imported++;
+        } else {
+          // Diary import
+          const watchedDate =
+            record.watched_date || record.date || new Date().toISOString().split('T')[0];
+          const rawRating = record.rating;
+          let parsedRating: number | null = null;
+          if (rawRating) {
+            const num = parseFloat(rawRating);
+            if (!isNaN(num) && num >= 0.5 && num <= 5.0) {
+              parsedRating = num;
+            }
+          }
+
+          const isRewatch = record.rewatch?.toLowerCase() === 'yes' || record.rewatch === '1';
+          const tags = record.tags || '';
+          const shareToken = default_visibility === 'UNLISTED' ? generateShareToken() : null;
+
+          await db.query(
+            `INSERT INTO diary_entries (
+               user_id, tmdb_id, rating, review_text, watched_date, is_rewatch, contains_spoilers, liked, tags, visibility, share_token
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              userId,
+              tmdbId,
+              parsedRating,
+              null,
+              watchedDate,
+              isRewatch ? 1 : 0,
+              0,
+              parsedRating && parsedRating >= 4.0 ? 1 : 0,
+              tags,
+              default_visibility,
+              shareToken
+            ]
+          );
+          imported++;
+        }
+      } catch (err: any) {
+        errors.push(err.message);
+        skipped++;
+      }
+    }
+
+    res.json({
+      message: `Successfully imported ${imported} films from Letterboxd CSV.`,
+      imported,
+      skipped,
+      total: records.length,
+      errors: errors.slice(0, 5)
+    });
+  } catch (err: any) {
+    console.error('Error importing Letterboxd CSV:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to import CSV.' });
   }
 });
 
@@ -224,12 +426,12 @@ router.patch('/:id/visibility', requireAuth, async (req: AuthenticatedRequest, r
   }
 });
 
-// Update diary entry
+// Update diary entry (rating, review_text, watched_date, is_rewatch, contains_spoilers, liked, tags, visibility)
 router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const entryId = parseInt(req.params.id, 10);
     const userId = req.user!.id;
-    const { rating, review_text, watched_date, is_rewatch, contains_spoilers, visibility } = req.body;
+    const { rating, review_text, watched_date, is_rewatch, contains_spoilers, liked, tags, visibility } = req.body;
 
     const entryCheck = await db.query('SELECT * FROM diary_entries WHERE id = $1', [entryId]);
     if (entryCheck.rows.length === 0) {
@@ -254,11 +456,18 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
       parsedRating = rating === null || rating === '' ? null : parseFloat(rating);
     }
 
+    let formattedTags = entry.tags;
+    if (Array.isArray(tags)) {
+      formattedTags = tags.map((t) => t.trim()).filter(Boolean).join(',');
+    } else if (typeof tags === 'string') {
+      formattedTags = tags.trim();
+    }
+
     const updated = await db.query(
       `UPDATE diary_entries
        SET rating = $1, review_text = $2, watched_date = $3, is_rewatch = $4,
-           contains_spoilers = $5, visibility = $6, share_token = $7
-       WHERE id = $8
+           contains_spoilers = $5, liked = $6, tags = $7, visibility = $8, share_token = $9
+       WHERE id = $10
        RETURNING *`,
       [
         parsedRating,
@@ -266,6 +475,8 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
         watched_date || entry.watched_date,
         is_rewatch !== undefined ? (is_rewatch ? 1 : 0) : entry.is_rewatch,
         contains_spoilers !== undefined ? (contains_spoilers ? 1 : 0) : entry.contains_spoilers,
+        liked !== undefined ? (liked ? 1 : 0) : entry.liked,
+        formattedTags,
         targetVisibility,
         shareToken,
         entryId

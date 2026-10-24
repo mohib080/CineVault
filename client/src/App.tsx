@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { MovieDetail } from './pages/MovieDetail';
+import { PersonDetail } from './pages/PersonDetail';
 import { ListsPage } from './pages/ListsPage';
 import { SharedVault } from './pages/SharedVault';
 import { UserProfile } from './pages/UserProfile';
@@ -15,9 +16,10 @@ import { Search, Film, X } from 'lucide-react';
 function AppContent() {
   const { user } = useAuth();
 
-  const [currentTab, setCurrentTab] = useState<'home' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared' | 'person'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
 
   // Modals
   const [logModalMovie, setLogModalMovie] = useState<Movie | null>(null);
@@ -50,6 +52,12 @@ function AppContent() {
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovieId(movie.tmdb_id);
     setCurrentTab('detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectPerson = (personId: number) => {
+    setSelectedPersonId(personId);
+    setCurrentTab('person');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -131,6 +139,7 @@ function AppContent() {
         {currentTab === 'dashboard' && (
           <Dashboard
             onQuickLog={handleQuickLogTrigger}
+            onSelectMovie={handleSelectMovie}
             onEditEntry={(entry) => {
               setEditingEntry(entry);
               setLogModalMovie({
@@ -153,11 +162,31 @@ function AppContent() {
             tmdbId={selectedMovieId}
             onBack={() => setCurrentTab('home')}
             onLogMovie={handleOpenLogForMovie}
+            onSelectMovie={handleSelectMovie}
+            onSelectPerson={handleSelectPerson}
+          />
+        )}
+
+        {currentTab === 'person' && selectedPersonId && (
+          <PersonDetail
+            personId={selectedPersonId}
+            onBack={() => {
+              if (selectedMovieId) {
+                setCurrentTab('detail');
+              } else {
+                setCurrentTab('home');
+              }
+            }}
+            onSelectMovie={handleSelectMovie}
+            onLogMovie={handleOpenLogForMovie}
           />
         )}
 
         {currentTab === 'profile' && user && (
-          <UserProfile username={user.username} />
+          <UserProfile
+            username={user.username}
+            onSelectMovie={handleSelectMovie}
+          />
         )}
       </main>
 
@@ -174,7 +203,6 @@ function AppContent() {
             setLogModalMovie(null);
             setEditingEntry(null);
             if (currentTab === 'dashboard') {
-              // Trigger refresh by re-selecting tab
               setCurrentTab('dashboard');
             }
           }}

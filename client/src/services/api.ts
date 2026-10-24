@@ -8,6 +8,26 @@ export interface User {
   created_at?: string;
 }
 
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+export interface CastMember {
+  person_id: number;
+  name: string;
+  profile_path?: string;
+  character_name?: string;
+  billing_order?: number;
+}
+
+export interface CrewMember {
+  person_id: number;
+  name: string;
+  profile_path?: string;
+  job: string;
+}
+
 export interface Movie {
   tmdb_id: number;
   title: string;
@@ -18,8 +38,15 @@ export interface Movie {
   director?: string;
   runtime?: number;
   overview?: string;
-  imdb_id?: string;
+  tagline?: string;
+  vote_average?: number;
   rating?: number;
+  trailer_key?: string;
+  imdb_id?: string;
+  genres?: Genre[];
+  cast?: CastMember[];
+  crew?: CrewMember[];
+  similar?: Movie[];
 }
 
 export interface DiaryEntry {
@@ -31,6 +58,8 @@ export interface DiaryEntry {
   watched_date: string;
   is_rewatch: boolean | number;
   contains_spoilers: boolean | number;
+  liked?: boolean | number;
+  tags?: string;
   visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
   share_token: string | null;
   created_at: string;
@@ -55,6 +84,56 @@ export interface MovieList {
   created_at: string;
   item_count?: number;
   username?: string;
+}
+
+export interface FavoriteMovie {
+  slot: number;
+  tmdb_id: number;
+  title: string;
+  release_year?: number;
+  poster_path?: string;
+  backdrop_path?: string;
+  director?: string;
+  rating?: number;
+}
+
+export interface PersonCredit {
+  tmdb_id: number;
+  title: string;
+  release_year?: number;
+  poster_path?: string;
+  character_name?: string;
+  job?: string;
+  credit_type: 'cast' | 'crew';
+  rating?: number;
+  watched?: boolean;
+  user_rating?: number;
+}
+
+export interface PersonDetail {
+  person: {
+    id: number;
+    name: string;
+    biography?: string;
+    profile_path?: string;
+    birthday?: string;
+    place_of_birth?: string;
+    known_for_department?: string;
+  };
+  cast_credits: PersonCredit[];
+  crew_credits: PersonCredit[];
+  stats: {
+    total_films: number;
+    watched_films: number;
+    percent_watched: number;
+  };
+}
+
+export interface DiscoverResponse {
+  results: Movie[];
+  page: number;
+  total_pages: number;
+  total_results: number;
 }
 
 export function getAuthToken(): string | null {
@@ -108,16 +187,43 @@ export const api = {
     }),
   getMe: () => request<{ user: User }>('/auth/me'),
 
-  // Movies
+  // Movies & Discovery
+  discoverMovies: (category: string = 'trending', page: number = 1, genre?: number, year?: number) => {
+    const params = new URLSearchParams({ category, page: page.toString() });
+    if (genre) params.append('genre', genre.toString());
+    if (year) params.append('year', year.toString());
+    return request<DiscoverResponse>(`/movies/discover?${params.toString()}`);
+  },
+  getGenres: () => request<{ genres: Genre[] }>('/movies/genres'),
   searchMovies: (query: string) => request<{ results: Movie[] }>(`/movies/search?q=${encodeURIComponent(query)}`),
   getPopularMovies: () => request<{ results: Movie[] }>('/movies/popular'),
   getMovieDetail: (id: number) => request<{ movie: Movie; userLogs: DiaryEntry[]; communityLogs: DiaryEntry[] }>(`/movies/${id}`),
+
+  // People (Cast & Crew filmographies)
+  getPersonDetail: (personId: number) => request<PersonDetail>(`/people/${personId}`),
+
+  // Top 4 Favorites
+  getUserFavorites: (username: string) => request<{ favorites: FavoriteMovie[] }>(`/users/${encodeURIComponent(username)}/favorites`),
+  updateUserFavorites: (favorites: Array<{ slot: number; tmdb_id: number }>) =>
+    request<{ message: string; favorites: FavoriteMovie[] }>('/users/me/favorites', {
+      method: 'PUT',
+      body: JSON.stringify({ favorites })
+    }),
 
   // Diary Logs
   logMovie: (payload: Partial<DiaryEntry> & { tmdb_id: number }) =>
     request<{ message: string; entry: DiaryEntry }>('/diary', {
       method: 'POST',
       body: JSON.stringify(payload)
+    }),
+  importLetterboxdCsv: (
+    csvText: string,
+    default_visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE' = 'PRIVATE',
+    type: 'diary' | 'watchlist' = 'diary'
+  ) =>
+    request<{ message: string; imported: number; skipped: number; total: number; errors: string[] }>('/diary/import-csv', {
+      method: 'POST',
+      body: JSON.stringify({ csvText, default_visibility, type })
     }),
   getMyDiary: (visibility?: string) =>
     request<{ entries: DiaryEntry[] }>(`/diary${visibility && visibility !== 'ALL' ? `?visibility=${visibility}` : ''}`),
@@ -177,9 +283,13 @@ export const api = {
         totalFilms: number;
         avgRating: string;
         rewatchCount: number;
+        totalHoursWatched: number;
+        topDirectors: Array<{ director: string; count: number }>;
+        topGenres: Array<{ name: string; count: number }>;
         listsCount: number;
         ratingDistribution: Record<string, number>;
       };
+      favorites: FavoriteMovie[];
       entries: DiaryEntry[];
       lists: MovieList[];
     }>(`/users/${encodeURIComponent(username)}/profile`)

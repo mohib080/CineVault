@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film } from 'lucide-react';
+import { X, Film, Heart, Tag } from 'lucide-react';
 import { Movie, DiaryEntry, api } from '../services/api';
 import { RatingStars } from './RatingStars';
 import { PrivacyToggle } from './PrivacyToggle';
@@ -37,6 +37,12 @@ export const LogMovieModal: React.FC<LogMovieModalProps> = ({
   const [containsSpoilers, setContainsSpoilers] = useState(
     initialEntry ? Boolean(initialEntry.contains_spoilers) : false
   );
+  const [liked, setLiked] = useState<boolean>(
+    initialEntry ? Boolean(initialEntry.liked) : false
+  );
+  const [tags, setTags] = useState<string>(
+    initialEntry ? (initialEntry.tags || '') : ''
+  );
   const [visibility, setVisibility] = useState<'PUBLIC' | 'UNLISTED' | 'PRIVATE'>(
     initialEntry ? initialEntry.visibility : (user?.default_privacy || 'PRIVATE')
   );
@@ -57,6 +63,8 @@ export const LogMovieModal: React.FC<LogMovieModalProps> = ({
           watched_date: watchedDate,
           is_rewatch: isRewatch,
           contains_spoilers: containsSpoilers,
+          liked: liked,
+          tags: tags,
           visibility
         });
         onSuccess(res.entry);
@@ -76,6 +84,8 @@ export const LogMovieModal: React.FC<LogMovieModalProps> = ({
           watched_date: watchedDate,
           is_rewatch: isRewatch,
           contains_spoilers: containsSpoilers,
+          liked: liked,
+          tags: tags,
           visibility
         });
         onSuccess(res.entry);
@@ -135,10 +145,48 @@ export const LogMovieModal: React.FC<LogMovieModalProps> = ({
             <PrivacyToggle value={visibility} onChange={setVisibility} />
           </div>
 
-          {/* Rating */}
+          {/* Rating & Like */}
           <div className="form-group">
-            <label>Rating (supports half-stars)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <label style={{ margin: 0 }}>Rating</label>
+              <button
+                type="button"
+                onClick={() => setLiked(!liked)}
+                style={{
+                  background: liked ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-input)',
+                  border: liked ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '0.3rem 0.65rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  color: liked ? '#ef4444' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Heart size={14} fill={liked ? '#ef4444' : 'none'} />
+                <span>{liked ? 'Liked' : 'Like'}</span>
+              </button>
+            </div>
             <RatingStars value={rating} onChange={setRating} size={24} />
+          </div>
+
+          {/* Tags */}
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Tag size={14} color="var(--accent-gold)" />
+              <span>Tags (comma separated)</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="e.g. noir, rewatch-2024, top-scifi, 90s-cinema"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+            />
           </div>
 
           {/* Watched Date */}

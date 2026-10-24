@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { DiaryEntry, api } from '../services/api';
+import { DiaryEntry, Movie, FavoriteMovie, api } from '../services/api';
 import { PrivacyBadge } from '../components/PrivacyBadge';
 import { RatingStars } from '../components/RatingStars';
 import { ShareModal } from '../components/ShareModal';
+import { FavoriteMoviesPicker } from '../components/FavoriteMoviesPicker';
+import { LetterboxdImportModal } from '../components/LetterboxdImportModal';
 import { useAuth } from '../context/AuthContext';
 import {
   Calendar,
@@ -10,42 +12,52 @@ import {
   AlertTriangle,
   Share2,
   Trash2,
-  Eye,
-  EyeOff,
   BarChart2,
   Filter,
-  Plus
+  Plus,
+  UploadCloud,
+  Heart,
+  Tag,
+  Clock,
+  Film
 } from 'lucide-react';
 
 interface DashboardProps {
   onQuickLog: () => void;
   onEditEntry: (entry: DiaryEntry) => void;
+  onSelectMovie?: (movie: Movie) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, onSelectMovie }) => {
   const { user } = useAuth();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteMovie[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'ALL' | 'PUBLIC' | 'UNLISTED' | 'PRIVATE'>('ALL');
   const [revealedSpoilers, setRevealedSpoilers] = useState<Record<number, boolean>>({});
   const [shareModalItem, setShareModalItem] = useState<{ id: number; token: string; title: string } | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const fetchEntries = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const res = await api.getMyDiary(filter);
-      setEntries(res.entries);
+      const [diaryRes, favsRes] = await Promise.all([
+        api.getMyDiary(filter),
+        user ? api.getUserFavorites(user.username) : Promise.resolve({ favorites: [] })
+      ]);
+      setEntries(diaryRes.entries);
+      setFavorites(favsRes.favorites || []);
     } catch (err) {
-      console.error('Failed to fetch diary entries:', err);
+      console.error('Failed to fetch dashboard data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEntries();
-  }, [filter]);
+    fetchDashboardData();
+  }, [filter, user?.username]);
 
   const handleToggleVisibility = async (id: number, nextVisibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE') => {
     try {
@@ -89,6 +101,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
   const rewatches = entries.filter((e) => Boolean(e.is_rewatch)).length;
   const ratings = entries.filter((e) => e.rating !== null).map((e) => Number(e.rating));
   const avgRating = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '—';
+  const totalMinutes = entries.reduce((acc, e) => acc + (Number(e.runtime) || 105), 0);
+  const totalHours = Math.round(totalMinutes / 60);
 
   // Distribution chart data: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
   const ratingSteps = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
@@ -120,6 +134,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
         />
       )}
 
+      {/* Letterboxd Import Modal */}
+      {showImportModal && (
+        <LetterboxdImportModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => {
+            fetchDashboardData();
+            showToast('Letterboxd films successfully imported!');
+          }}
+        />
+      )}
+
       {/* Dashboard Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -131,10 +156,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
           </p>
         </div>
 
-        <button onClick={onQuickLog} className="btn btn-gold">
-          <Plus size={16} /> Log Another Film
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <UploadCloud size={16} color="var(--accent-gold)" /> Import from Letterboxd
+          </button>
+
+          <button onClick={onQuickLog} className="btn btn-gold">
+            <Plus size={16} /> Log Another Film
+          </button>
+        </div>
       </div>
+
+      {/* Top 4 Favorite Films Showcase */}
+      <FavoriteMoviesPicker
+        favorites={favorites}
+        isOwner={true}
+        onUpdate={fetchDashboardData}
+        onSelectMovie={onSelectMovie}
+      />
 
       {/* Analytics & Stats Bar */}
       <div
@@ -151,15 +194,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Average Rating</span>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '0.25rem' }}>
-            {avgRating} {avgRating !== '—' && <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 5.0</span>}
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Hours Watched</span>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '0.25rem' }}>
+            {totalHours} <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)' }}>hrs</span>
           </h2>
         </div>
 
         <div style={{ background: 'var(--bg-card)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rewatches</span>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '0.25rem' }}>{rewatches}</h2>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Average Rating</span>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '0.25rem' }}>
+            {avgRating} {avgRating !== '—' && <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 5.0</span>}
+          </h2>
         </div>
 
         {/* Mini Rating Distribution Chart */}
@@ -249,9 +294,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
           <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginBottom: '1.25rem' }}>
             No vault entries found for filter: <strong>{filter}</strong>
           </p>
-          <button onClick={onQuickLog} className="btn btn-primary">
-            <Plus size={16} /> Log Your First Film
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+            <button onClick={() => setShowImportModal(true)} className="btn btn-secondary">
+              <UploadCloud size={16} /> Import Letterboxd CSV
+            </button>
+            <button onClick={onQuickLog} className="btn btn-primary">
+              <Plus size={16} /> Log Your First Film
+            </button>
+          </div>
         </div>
       ) : (
         <div className="diary-timeline">
@@ -265,17 +315,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
 
             return (
               <div key={entry.id} className="diary-item-card">
-                <img src={posterUrl} alt={entry.title || 'Poster'} className="diary-item-poster" />
+                <img
+                  src={posterUrl}
+                  alt={entry.title || 'Poster'}
+                  className="diary-item-poster"
+                  style={{ cursor: onSelectMovie ? 'pointer' : 'default' }}
+                  onClick={() => {
+                    if (onSelectMovie) {
+                      onSelectMovie({
+                        tmdb_id: entry.tmdb_id,
+                        title: entry.title || 'Movie',
+                        release_year: entry.release_year,
+                        poster_path: entry.poster_path,
+                        backdrop_path: entry.backdrop_path,
+                        director: entry.director,
+                        runtime: entry.runtime
+                      });
+                    }
+                  }}
+                />
 
                 <div className="diary-item-content">
                   <div className="diary-item-header">
                     <div>
-                      <div className="diary-item-title">
+                      <div
+                        className="diary-item-title"
+                        style={{ cursor: onSelectMovie ? 'pointer' : 'default' }}
+                        onClick={() => {
+                          if (onSelectMovie) {
+                            onSelectMovie({
+                              tmdb_id: entry.tmdb_id,
+                              title: entry.title || 'Movie',
+                              release_year: entry.release_year,
+                              poster_path: entry.poster_path,
+                              backdrop_path: entry.backdrop_path,
+                              director: entry.director,
+                              runtime: entry.runtime
+                            });
+                          }
+                        }}
+                      >
                         <span>{entry.title || 'Untitled Film'}</span>
                         <span className="diary-item-year">({entry.release_year || '—'})</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginTop: '0.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                         <RatingStars value={entry.rating} readOnly size={16} />
+
+                        {Boolean(entry.liked) && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>
+                            <Heart size={13} fill="#ef4444" /> Liked
+                          </span>
+                        )}
+
                         {Boolean(entry.is_rewatch) && (
                           <span
                             style={{
@@ -346,6 +437,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry })
                       ) : (
                         <p className="diary-item-review">{entry.review_text}</p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  {entry.tags && (
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', margin: '0.4rem 0' }}>
+                      {entry.tags.split(',').map((t, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            color: 'var(--text-muted)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '0.15rem 0.45rem',
+                            fontSize: '0.72rem'
+                          }}
+                        >
+                          <Tag size={10} color="var(--accent-gold)" /> {t.trim()}
+                        </span>
+                      ))}
                     </div>
                   )}
 

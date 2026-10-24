@@ -62,14 +62,49 @@ class SQLiteFallbackDatabase implements IDatabase {
         director TEXT,
         runtime INTEGER,
         overview TEXT,
+        tagline TEXT,
+        vote_average NUMERIC,
+        trailer_key TEXT,
         imdb_id TEXT,
         rating NUMERIC,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE INDEX IF NOT EXISTS idx_movies_title ON movies(title);
       CREATE INDEX IF NOT EXISTS idx_movies_type ON movies(title_type);
       CREATE INDEX IF NOT EXISTS idx_movies_rating ON movies(rating);
+
+      CREATE TABLE IF NOT EXISTS genres (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS movie_genres (
+        tmdb_id INTEGER NOT NULL REFERENCES movies(tmdb_id) ON DELETE CASCADE,
+        genre_id INTEGER NOT NULL REFERENCES genres(id) ON DELETE CASCADE,
+        PRIMARY KEY (tmdb_id, genre_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_movie_genres_genre ON movie_genres(genre_id);
+
+      CREATE TABLE IF NOT EXISTS people (
+        person_id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        profile_path TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_people_name ON people(name);
+
+      CREATE TABLE IF NOT EXISTS movie_credits (
+        tmdb_id INTEGER NOT NULL REFERENCES movies(tmdb_id) ON DELETE CASCADE,
+        person_id INTEGER NOT NULL REFERENCES people(person_id) ON DELETE CASCADE,
+        credit_type TEXT,
+        character_name TEXT,
+        job TEXT,
+        billing_order INTEGER,
+        PRIMARY KEY (tmdb_id, person_id, credit_type, job)
+      );
+      CREATE INDEX IF NOT EXISTS idx_credits_movie ON movie_credits(tmdb_id);
+      CREATE INDEX IF NOT EXISTS idx_credits_person ON movie_credits(person_id);
 
       CREATE TABLE IF NOT EXISTS diary_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +115,8 @@ class SQLiteFallbackDatabase implements IDatabase {
         watched_date TEXT NOT NULL,
         is_rewatch INTEGER DEFAULT 0,
         contains_spoilers INTEGER DEFAULT 0,
+        liked INTEGER DEFAULT 0,
+        tags TEXT DEFAULT '',
         visibility TEXT NOT NULL DEFAULT 'PRIVATE',
         share_token TEXT UNIQUE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -104,6 +141,14 @@ class SQLiteFallbackDatabase implements IDatabase {
         added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (list_id, tmdb_id)
       );
+
+      CREATE TABLE IF NOT EXISTS user_favorites (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tmdb_id INTEGER NOT NULL REFERENCES movies(tmdb_id) ON DELETE CASCADE,
+        slot INTEGER CHECK (slot BETWEEN 1 AND 4),
+        PRIMARY KEY (user_id, slot)
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_favorites ON user_favorites(user_id);
     `);
 
     // Migration helper for existing sqlite tables
@@ -112,6 +157,24 @@ class SQLiteFallbackDatabase implements IDatabase {
     } catch {}
     try {
       this.db.exec("ALTER TABLE movies ADD COLUMN title_type TEXT DEFAULT 'movie';");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE movies ADD COLUMN tagline TEXT;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE movies ADD COLUMN vote_average NUMERIC;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE movies ADD COLUMN trailer_key TEXT;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE movies ADD COLUMN updated_at DATETIME;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE diary_entries ADD COLUMN liked INTEGER DEFAULT 0;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE diary_entries ADD COLUMN tags TEXT DEFAULT '';");
     } catch {}
     try {
       this.db.exec("CREATE INDEX IF NOT EXISTS idx_movies_title ON movies(title);");
