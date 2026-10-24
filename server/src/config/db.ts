@@ -20,9 +20,11 @@ class SQLiteFallbackDatabase implements IDatabase {
   private db: Database.Database;
 
   constructor() {
-    // Use D:\cinevault_data if available (saves C: drive space), else local
+    // Use /tmp on Vercel/serverless environments, D:\cinevault_data if available, else local root
     const dbPath = process.env.SQLITE_PATH || (
-      fs.existsSync('D:\\cinevault_data')
+      process.env.VERCEL
+        ? '/tmp/cinevault.sqlite'
+        : fs.existsSync('D:\\cinevault_data')
         ? 'D:\\cinevault_data\\cinevault.sqlite'
         : path.resolve(__dirname, '../../../cinevault_fallback.sqlite')
     );
