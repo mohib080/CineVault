@@ -257,6 +257,13 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      {/* Presentation-Level 3D Ambient Stage */}
+      <div className="bb-ambient-3d-stage">
+        <div className="bb-ambient-orb-1" />
+        <div className="bb-ambient-orb-2" />
+        <div className="bb-ambient-orb-3" />
+      </div>
+
       <Navbar
         currentTab={routeState.tab}
         onSelectTab={(tab) => handleSelectTab(tab as TabType)}
@@ -267,7 +274,7 @@ function AppContent() {
         onOpenImportCSV={() => setShowImportModal(true)}
       />
 
-      <main className="main-content">
+      <main className="main-content" key={routeState.tab + (routeState.movieId || '') + (routeState.personId || '')}>
         {routeState.tab === 'shared' && routeState.sharedParams && (
           <SharedVault
             type={routeState.sharedParams.type}

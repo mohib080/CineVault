@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { Movie } from '../services/api';
 import { Plus, Film, Star, Tv, Play, ArrowUpRight, Lock, Link2, Globe } from 'lucide-react';
 
@@ -9,8 +9,12 @@ interface MovieCardProps {
   onClick?: (movie: Movie) => void;
 }
 
+const MAX_TILT = 12; // Degrees
+const HOVER_SCALE = 1.05;
+
 export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrailerClick, onClick }) => {
-  const [isHovered, setIsHovered] = useState(false);
+  const cardWrapRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
   const hasPoster = Boolean(movie.poster_path && movie.poster_path.trim() !== '');
   const posterUrl = hasPoster
@@ -20,14 +24,78 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrail
   const isSeries = movie.title_type === 'series' || movie.overview?.includes('[TV Series]');
   const score = movie.vote_average || movie.rating;
 
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
+  const updateFromPoint = useCallback((clientX: number, clientY: number) => {
+    if (!cardWrapRef.current) return;
+    const rect = cardWrapRef.current.getBoundingClientRect();
+
+    const px = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const py = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+
+    const rotY = ((px - 50) / 50) * MAX_TILT;
+    const rotX = ((py - 50) / 50) * -MAX_TILT;
+
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+
+    rafRef.current = requestAnimationFrame(() => {
+      const card = cardWrapRef.current;
+      if (!card) return;
+      card.style.setProperty('--pointer-x', `${px.toFixed(1)}%`);
+      card.style.setProperty('--pointer-y', `${py.toFixed(1)}%`);
+      card.style.setProperty('--rotate-x', `${rotX.toFixed(2)}deg`);
+      card.style.setProperty('--rotate-y', `${rotY.toFixed(2)}deg`);
+      card.style.setProperty('--card-scale', `${HOVER_SCALE}`);
+    });
+  }, []);
+
+  const resetTilt = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    rafRef.current = requestAnimationFrame(() => {
+      const card = cardWrapRef.current;
+      if (!card) return;
+      card.style.setProperty('--rotate-x', '0deg');
+      card.style.setProperty('--rotate-y', '0deg');
+      card.style.setProperty('--card-scale', '1');
+    });
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    updateFromPoint(e.clientX, e.clientY);
+  }, [updateFromPoint]);
+
+  const handleMouseLeave = useCallback(() => {
+    resetTilt();
+  }, [resetTilt]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (touch) updateFromPoint(touch.clientX, touch.clientY);
+  }, [updateFromPoint]);
+
   return (
     <div
       className="bb-movie-card"
       onClick={() => onClick && onClick(movie)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={resetTilt}
     >
-      <div className="bb-movie-poster-wrap">
+      <div className="bb-movie-poster-wrap" ref={cardWrapRef}>
+        {/* Dynamic Specular Light Sheen */}
+        <div className="bb-card-sheen" />
+
         {posterUrl ? (
           <img
             src={posterUrl}
@@ -77,7 +145,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrail
           </div>
         )}
 
-        {/* Ambient Top Badges */}
+        {/* 3D Floating Top Badges */}
         <div className="bb-card-top-badges">
           {/* Format or Privacy Badge */}
           {movie.visibility ? (
@@ -147,7 +215,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrail
           )}
         </div>
 
-        {/* Hover Action Overlay with BingeBang Circular Buttons */}
+        {/* 3D Elevated Hover Action Overlay */}
         <div className="bb-card-hover-overlay">
           <div className="bb-card-quick-actions">
             {onLogClick && (

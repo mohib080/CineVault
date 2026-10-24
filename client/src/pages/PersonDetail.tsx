@@ -118,7 +118,16 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
               overflow: 'hidden',
               border: '3px solid var(--accent-cyan)',
               boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 229, 255, 0.25)',
-              flexShrink: 0
+              flexShrink: 0,
+              transition: 'all 0.35s cubic-bezier(0.23, 1, 0.32, 1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.08) translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 229, 255, 0.45)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1) translateY(0)';
+              e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 229, 255, 0.25)';
             }}
           >
             <img

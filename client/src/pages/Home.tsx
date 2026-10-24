@@ -59,6 +59,36 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
   const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const heroRafRef = useRef<number | null>(null);
+
+  const handleHeroMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (!heroSectionRef.current) return;
+    const rect = heroSectionRef.current.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    const rotY = px * 7;
+    const rotX = py * -7;
+
+    if (heroRafRef.current !== null) cancelAnimationFrame(heroRafRef.current);
+    heroRafRef.current = requestAnimationFrame(() => {
+      const section = heroSectionRef.current;
+      if (!section) return;
+      section.style.setProperty('--hero-rot-x', `${rotX.toFixed(2)}deg`);
+      section.style.setProperty('--hero-rot-y', `${rotY.toFixed(2)}deg`);
+    });
+  };
+
+  const handleHeroMouseLeave = () => {
+    setIsHeroPaused(false);
+    if (heroRafRef.current !== null) cancelAnimationFrame(heroRafRef.current);
+    heroRafRef.current = requestAnimationFrame(() => {
+      const section = heroSectionRef.current;
+      if (!section) return;
+      section.style.setProperty('--hero-rot-x', '0deg');
+      section.style.setProperty('--hero-rot-y', '0deg');
+    });
+  };
 
   // Swimlanes Data
   const [vaultRecent, setVaultRecent] = useState<DiaryEntry[]>([]);
@@ -227,10 +257,12 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
       {/* 1. Full-Bleed 5-Slide Auto-Rotating Hero Spotlight Banner */}
       {currentHero && (
         <section
+          ref={heroSectionRef}
           className="bb-hero-banner"
           style={{ backgroundImage: `url(${heroBackdropUrl})` }}
           onMouseEnter={() => setIsHeroPaused(true)}
-          onMouseLeave={() => setIsHeroPaused(false)}
+          onMouseMove={handleHeroMouseMove}
+          onMouseLeave={handleHeroMouseLeave}
         >
           <div className="bb-hero-vignette" />
 

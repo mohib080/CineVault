@@ -121,9 +121,18 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
               aspectRatio: '2/3',
               borderRadius: 'var(--radius-lg)',
               objectFit: 'cover',
-              boxShadow: 'var(--shadow-poster)',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
-              transition: 'transform 0.3s ease'
+              boxShadow: '0 25px 50px -10px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 229, 255, 0.25)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              transform: 'perspective(1000px) rotateY(-4deg) rotateX(2deg)',
+              transition: 'all 0.35s cubic-bezier(0.23, 1, 0.32, 1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.05) translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 32px 60px -8px rgba(0, 0, 0, 0.98), 0 0 45px rgba(0, 229, 255, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'perspective(1000px) rotateY(-4deg) rotateX(2deg)';
+              e.currentTarget.style.boxShadow = '0 25px 50px -10px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 229, 255, 0.25)';
             }}
           />
 
@@ -273,10 +282,10 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                     maxWidth: 110,
                     textAlign: 'center',
                     cursor: onSelectPerson ? 'pointer' : 'default',
-                    transition: 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
+                    transition: 'transform 0.28s cubic-bezier(0.23, 1, 0.32, 1)'
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-6px) scale(1.06)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
                 >
                   <div
                     style={{
