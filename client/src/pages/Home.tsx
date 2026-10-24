@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Movie, Genre, api } from '../services/api';
 import { MovieCard } from '../components/MovieCard';
-import { Shield, Sparkles, Lock, Link2, Globe, Search, Flame, Trophy, CalendarDays, Star, Filter, Loader2 } from 'lucide-react';
+import {
+  Shield,
+  Sparkles,
+  Lock,
+  Link2,
+  Globe,
+  Search,
+  Flame,
+  Trophy,
+  CalendarDays,
+  Star,
+  Filter,
+  Loader2,
+  ArrowRight,
+  Plus
+} from 'lucide-react';
 
 interface HomeProps {
   onLogMovie: (movie: Movie) => void;
@@ -175,19 +190,208 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
             <strong> Private</strong>, <strong>Unlisted</strong> cryptographic share links, and <strong>Public</strong> feeds.
           </p>
 
-          {/* Privacy demo badges */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--priv-private-bg)', border: '1px solid var(--priv-private-border)', color: 'var(--priv-private-text)', padding: '0.4rem 0.85rem', borderRadius: 20, fontSize: '0.85rem' }}>
-              <Lock size={14} /> <strong>Private:</strong> Owner-Only Eyes
+          {/* Privacy Architecture Bento Grid */}
+          <div className="privacy-bento-grid">
+            <div className="privacy-bento-card card-private">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--priv-private-bg)', border: '1px solid var(--priv-private-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--priv-private-text)' }}>
+                  <Lock size={18} />
+                </div>
+                <span className="badge-privacy PRIVATE">Private</span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '0.35rem' }}>Owner-Only Eyes</h3>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
+                Completely secluded diary entries and reviews visible only to you. Keep your rawest critiques and personal watch dates 100% confidential.
+              </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--priv-unlisted-bg)', border: '1px solid var(--priv-unlisted-border)', color: 'var(--priv-unlisted-text)', padding: '0.4rem 0.85rem', borderRadius: 20, fontSize: '0.85rem' }}>
-              <Link2 size={14} /> <strong>Unlisted:</strong> Secret Token URL
+
+            <div className="privacy-bento-card card-unlisted">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--priv-unlisted-bg)', border: '1px solid var(--priv-unlisted-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--priv-unlisted-text)' }}>
+                  <Link2 size={18} />
+                </div>
+                <span className="badge-privacy UNLISTED">Unlisted</span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '0.35rem' }}>Cryptographic URL</h3>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
+                Invisible from search engines and community streams. Share individual reviews with selected friends via unique, tamper-proof token links.
+              </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--priv-public-bg)', border: '1px solid var(--priv-public-border)', color: 'var(--priv-public-text)', padding: '0.4rem 0.85rem', borderRadius: 20, fontSize: '0.85rem' }}>
-              <Globe size={14} /> <strong>Public:</strong> CineVault Network
+
+            <div className="privacy-bento-card card-public">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--priv-public-bg)', border: '1px solid var(--priv-public-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--priv-public-text)' }}>
+                  <Globe size={18} />
+                </div>
+                <span className="badge-privacy PUBLIC">Public</span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '0.35rem' }}>CineVault Network</h3>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
+                Broadcasted to the public CineVault feed and your Letterboxd-style profile. Foster cinephile discussions and contribute to community ratings.
+              </p>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Featured Spotlight Banner (Discovery Mode) */}
+      {!searchQuery && movies.length > 0 && page === 1 && (
+        (() => {
+          const spotlight = movies[0];
+          const backdrop = spotlight.backdrop_path
+            ? (spotlight.backdrop_path.startsWith('http') ? spotlight.backdrop_path : `https://image.tmdb.org/t/p/original${spotlight.backdrop_path}`)
+            : null;
+          const poster = spotlight.poster_path
+            ? (spotlight.poster_path.startsWith('http') ? spotlight.poster_path : `https://image.tmdb.org/t/p/w500${spotlight.poster_path}`)
+            : 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80';
+
+          return (
+            <div
+              className="hero-spotlight-banner"
+              style={{
+                position: 'relative',
+                backgroundImage: backdrop
+                  ? `linear-gradient(to right, rgba(6, 8, 12, 0.98) 25%, rgba(6, 8, 12, 0.85) 60%, rgba(6, 8, 12, 0.4) 100%), url(${backdrop})`
+                  : 'linear-gradient(135deg, #10151f 0%, #06080c 100%)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                padding: '2.5rem 2.25rem',
+                minHeight: '320px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <div
+                className="spotlight-content"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2.5rem',
+                  width: '100%',
+                  zIndex: 2
+                }}
+              >
+                <div
+                  className="spotlight-poster"
+                  style={{
+                    width: 170,
+                    aspectRatio: '2/3',
+                    borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden',
+                    boxShadow: '0 12px 35px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.15)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    flexShrink: 0,
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => onSelectMovie(spotlight)}
+                >
+                  <img
+                    src={poster}
+                    alt={spotlight.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        background: 'linear-gradient(135deg, rgba(245, 179, 53, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%)',
+                        color: 'var(--accent-gold)',
+                        border: '1px solid rgba(245, 179, 53, 0.4)',
+                        padding: '0.2rem 0.65rem',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.6px'
+                      }}
+                    >
+                      <Flame size={13} /> Featured Spotlight
+                    </span>
+                    {(spotlight.vote_average || spotlight.rating) && (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          background: 'rgba(0, 0, 0, 0.6)',
+                          backdropFilter: 'blur(8px)',
+                          border: '1px solid rgba(245, 179, 53, 0.3)',
+                          color: 'var(--accent-gold)',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: 'var(--radius-full)',
+                          fontSize: '0.78rem',
+                          fontWeight: 700
+                        }}
+                      >
+                        <Star size={13} fill="var(--accent-gold)" /> {(spotlight.vote_average || spotlight.rating)?.toFixed(1)} TMDB
+                      </span>
+                    )}
+                    {spotlight.release_year && (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {spotlight.release_year}
+                      </span>
+                    )}
+                  </div>
+
+                  <h2
+                    onClick={() => onSelectMovie(spotlight)}
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '2.2rem',
+                      fontWeight: 800,
+                      lineHeight: 1.2,
+                      cursor: 'pointer',
+                      marginBottom: '0.75rem',
+                      color: '#ffffff'
+                    }}
+                  >
+                    {spotlight.title}
+                  </h2>
+
+                  {spotlight.overview && (
+                    <p
+                      style={{
+                        color: '#c9d1d9',
+                        fontSize: '0.96rem',
+                        lineHeight: 1.6,
+                        maxWidth: 720,
+                        marginBottom: '1.5rem',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {spotlight.overview}
+                    </p>
+                  )}
+
+                  <div className="spotlight-actions" style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => onLogMovie(spotlight)}
+                      className="btn btn-gold"
+                      style={{ padding: '0.65rem 1.4rem', fontSize: '0.9rem' }}
+                    >
+                      <Plus size={16} /> Quick Log to Vault
+                    </button>
+                    <button
+                      onClick={() => onSelectMovie(spotlight)}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.65rem 1.3rem', fontSize: '0.9rem', gap: '0.45rem' }}
+                    >
+                      View Details & Cast <ArrowRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()
       )}
 
       {/* Discovery Navigation & Controls */}

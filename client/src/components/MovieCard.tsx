@@ -1,9 +1,9 @@
 import React from 'react';
 import { Movie } from '../services/api';
-import { Plus, Film, Star } from 'lucide-react';
+import { Plus, Film, Star, Tv } from 'lucide-react';
 
 interface MovieCardProps {
-  movie: Movie & { rating?: number };
+  movie: Movie & { rating?: number; vote_average?: number };
   onLogClick?: (movie: Movie) => void;
   onClick?: (movie: Movie) => void;
 }
@@ -14,33 +14,63 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
     ? (movie.poster_path!.startsWith('http') ? movie.poster_path : `https://image.tmdb.org/t/p/w500${movie.poster_path}`)
     : null;
 
+  const isSeries = movie.title_type === 'series' || movie.overview?.includes('[TV Series]');
+  const score = movie.vote_average || movie.rating;
+
   return (
-    <div className="movie-card" onClick={() => onClick && onClick(movie)}>
-      <div className="movie-poster-wrap">
+    <div
+      className="movie-card group"
+      onClick={() => onClick && onClick(movie)}
+      style={{
+        position: 'relative',
+        background: 'var(--bg-card)',
+        borderRadius: 'var(--radius-md)',
+        overflow: 'hidden',
+        border: '1px solid var(--border-subtle)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+        cursor: 'pointer',
+        transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <div
+        className="movie-poster-wrap"
+        style={{
+          position: 'relative',
+          width: '100%',
+          aspectRatio: '2/3',
+          background: '#0d1117',
+          overflow: 'hidden'
+        }}
+      >
         {posterUrl ? (
-          <img src={posterUrl} alt={movie.title} className="movie-poster" loading="lazy" />
+          <img
+            src={posterUrl}
+            alt={movie.title}
+            className="movie-poster"
+            loading="lazy"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform 0.4s ease'
+            }}
+          />
         ) : (
           <div
             style={{
               width: '100%',
               height: '100%',
               background: 'linear-gradient(145deg, #181d26 0%, #0d1017 100%)',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              padding: '1.25rem 0.85rem',
-              position: 'relative'
+              padding: '1.25rem 0.85rem'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Film size={20} color="var(--accent-cyan)" opacity={0.8} />
-              {movie.rating && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 700 }}>
-                  <Star size={11} fill="var(--accent-gold)" />
-                  <span>{movie.rating}</span>
-                </div>
-              )}
+              {isSeries ? <Tv size={20} color="var(--accent-gold)" /> : <Film size={20} color="var(--accent-cyan)" />}
             </div>
 
             <div>
@@ -70,18 +100,97 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
           </div>
         )}
 
+        {/* Ambient Top Badges */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            right: 8,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            zIndex: 2,
+            pointerEvents: 'none'
+          }}
+        >
+          {/* Format Badge */}
+          <span
+            style={{
+              fontSize: '0.65rem',
+              fontWeight: 800,
+              padding: '2px 6px',
+              borderRadius: 4,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              background: isSeries ? 'rgba(245, 179, 53, 0.85)' : 'rgba(10, 13, 18, 0.75)',
+              color: isSeries ? '#000' : 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(8px)',
+              border: isSeries ? 'none' : '1px solid rgba(255, 255, 255, 0.15)'
+            }}
+          >
+            {isSeries ? 'Series' : 'Film'}
+          </span>
+
+          {/* Rating Pill */}
+          {score && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 4,
+                background: 'rgba(10, 13, 18, 0.85)',
+                color: 'var(--accent-gold)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(245, 179, 53, 0.35)'
+              }}
+            >
+              <Star size={11} fill="var(--accent-gold)" />
+              <span>{score.toFixed(1)}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Dark Vignette Overlay on Bottom of Poster */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '40%',
+            background: 'linear-gradient(to top, rgba(14, 19, 27, 0.95), transparent)',
+            pointerEvents: 'none'
+          }}
+        />
+
+        {/* Quick Log Button on Hover */}
         {onLogClick && (
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn-quick-log"
             style={{
               position: 'absolute',
-              bottom: '8px',
-              right: '8px',
-              padding: '0.4rem 0.65rem',
+              bottom: 8,
+              right: 8,
+              padding: '0.35rem 0.65rem',
               borderRadius: 'var(--radius-full)',
-              fontSize: '0.78rem',
-              zIndex: 3
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #00e5ff 0%, #0284c7 100%)',
+              color: '#051424',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              zIndex: 3,
+              boxShadow: '0 4px 12px rgba(0, 229, 255, 0.4)',
+              cursor: 'pointer',
+              border: 'none',
+              transition: 'transform 0.2s ease'
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -89,19 +198,49 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onClick
             }}
             title="Log this film to your Vault"
           >
-            <Plus size={14} /> Log
+            <Plus size={13} strokeWidth={2.8} /> Log
           </button>
         )}
       </div>
 
-      <div className="movie-card-info">
-        <h4 className="movie-card-title" title={movie.title}>
+      <div className="movie-card-info" style={{ padding: '0.75rem 0.85rem' }}>
+        <h4
+          className="movie-card-title"
+          title={movie.title}
+          style={{
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            color: 'var(--text-main)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.3
+          }}
+        >
           {movie.title}
         </h4>
-        <div className="movie-card-meta">
+        <div
+          className="movie-card-meta"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: '0.25rem',
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)'
+          }}
+        >
           <span>{movie.release_year || '—'}</span>
           {movie.director && (
-            <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={movie.director}>
+            <span
+              style={{
+                maxWidth: '110px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+              title={movie.director}
+            >
               {movie.director}
             </span>
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Film, Search, Bookmark, User as UserIcon, LogOut, Plus, Lock, Tv, Star, X } from 'lucide-react';
+import { Shield, Film, Search, Bookmark, User as UserIcon, LogOut, Plus, Lock, Tv, Star, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Movie, api } from '../services/api';
 
@@ -26,6 +26,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Global Ctrl+K / Cmd+K listener
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const input = searchContainerRef.current?.querySelector('input');
+        input?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   // Debounced live dynamic suggestions
   useEffect(() => {
@@ -97,9 +110,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="nav-brand"
         >
           <div className="vault-badge-icon">
-            <Shield size={18} strokeWidth={2.8} />
+            <Shield size={19} strokeWidth={2.8} />
           </div>
-          <span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
             Cine<span style={{ color: 'var(--accent-cyan)' }}>Vault</span>
           </span>
         </a>
@@ -110,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Search size={16} className="nav-search-icon" />
             <input
               type="text"
-              placeholder="Search films, series, directors..."
+              placeholder="Search films, series, directors... (Ctrl+K)"
               value={searchInput}
               onFocus={() => {
                 if (suggestions.length > 0) setIsOpen(true);
@@ -120,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 if (e.key === 'Escape') setIsOpen(false);
               }}
             />
-            {searchInput && (
+            {searchInput ? (
               <button
                 type="button"
                 onClick={() => {
@@ -139,6 +152,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <X size={14} />
               </button>
+            ) : (
+              <kbd
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: 4,
+                  padding: '1px 5px',
+                  fontSize: '0.68rem',
+                  color: 'var(--text-muted)',
+                  pointerEvents: 'none',
+                  fontFamily: 'monospace'
+                }}
+              >
+                ⌘K
+              </kbd>
             )}
           </form>
 
@@ -150,13 +182,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 top: 'calc(100% + 8px)',
                 left: 0,
                 right: 0,
-                background: '#121721',
+                background: '#0e131d',
                 border: '1px solid var(--accent-cyan-glow)',
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.75), 0 0 15px rgba(0, 229, 255, 0.1)',
+                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 229, 255, 0.12)',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 zIndex: 1000,
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)'
               }}
             >
               {isSearching && suggestions.length === 0 ? (
@@ -235,23 +268,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <span
                               style={{
                                 fontSize: '0.68rem',
-                                fontWeight: 700,
+                                fontWeight: 800,
                                 padding: '1px 5px',
                                 borderRadius: 3,
                                 textTransform: 'uppercase',
-                                background: isSeries ? 'rgba(245, 179, 53, 0.15)' : 'rgba(0, 229, 255, 0.12)',
+                                background: isSeries ? 'rgba(245, 179, 53, 0.2)' : 'rgba(0, 229, 255, 0.15)',
                                 color: isSeries ? 'var(--accent-gold)' : 'var(--accent-cyan)'
                               }}
                             >
-                              {isSeries ? 'Series' : 'Movie'}
+                              {isSeries ? 'Series' : 'Film'}
                             </span>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 2, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             <span>{m.release_year || '—'}</span>
-                            {m.rating && (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 2, color: 'var(--accent-gold)', fontWeight: 600 }}>
-                                <Star size={11} fill="var(--accent-gold)" /> {m.rating}
+                            {(m.vote_average || m.rating) && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 2, color: 'var(--accent-gold)', fontWeight: 700 }}>
+                                <Star size={11} fill="var(--accent-gold)" /> {(m.vote_average || m.rating)?.toFixed(1)}
                               </span>
                             )}
                             {m.director && (
@@ -268,10 +301,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div
                     onClick={handleSearchSubmit}
                     style={{
-                      padding: '0.6rem 0.85rem',
+                      padding: '0.65rem 0.85rem',
                       fontSize: '0.78rem',
                       color: 'var(--accent-cyan)',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: 'pointer',
                       textAlign: 'center',
                       background: 'rgba(0, 229, 255, 0.05)'
@@ -322,7 +355,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="btn btn-gold"
               style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
             >
-              <Plus size={15} /> Log Film / Series
+              <Plus size={15} strokeWidth={2.8} /> Log Film
             </button>
           )}
 
@@ -332,10 +365,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => onSelectTab('profile')}
                 className="nav-item"
-                style={{ fontWeight: 700, color: 'var(--text-main)' }}
+                style={{ fontWeight: 700, color: 'var(--text-main)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}
                 title="View your public profile"
               >
-                <UserIcon size={16} color="var(--accent-cyan)" />
+                <UserIcon size={15} color="var(--accent-cyan)" />
                 <span>{user.username}</span>
               </button>
               <button

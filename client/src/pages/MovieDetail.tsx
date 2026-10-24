@@ -99,14 +99,15 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
       <div
         style={{
           position: 'relative',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius-xl)',
           overflow: 'hidden',
           marginBottom: '2.5rem',
-          border: '1px solid var(--border-subtle)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           background: backdropUrl
-            ? `linear-gradient(to top, rgba(10, 13, 18, 0.96) 20%, rgba(10, 13, 18, 0.65) 100%), url(${backdropUrl}) center/cover no-repeat`
+            ? `linear-gradient(to top, #06080c 15%, rgba(6, 8, 12, 0.82) 65%, rgba(6, 8, 12, 0.5) 100%), url(${backdropUrl}) center/cover no-repeat`
             : 'var(--bg-card)',
-          padding: '2.5rem'
+          padding: '2.5rem',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 229, 255, 0.08)'
         }}
       >
         <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -116,25 +117,26 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
             style={{
               width: 220,
               aspectRatio: '2/3',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 'var(--radius-lg)',
               objectFit: 'cover',
               boxShadow: 'var(--shadow-poster)',
-              border: '1px solid var(--border-glow)'
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              transition: 'transform 0.3s ease'
             }}
           />
 
-          <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
             <div>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.6rem', fontWeight: 800, lineHeight: 1.15 }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.8px' }}>
                 {movie.title}
               </h1>
               {movie.tagline && (
                 <p
                   style={{
                     color: 'var(--accent-gold)',
-                    fontSize: '1rem',
+                    fontSize: '1.05rem',
                     fontStyle: 'italic',
-                    marginTop: '0.35rem',
+                    marginTop: '0.4rem',
                     opacity: 0.95
                   }}
                 >
@@ -144,42 +146,43 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
             </div>
 
             {/* Meta tags & genres */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', color: 'var(--text-muted)', fontSize: '0.92rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.92rem', flexWrap: 'wrap' }}>
               {movie.release_year && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Calendar size={15} color="var(--accent-gold)" /> {movie.release_year}
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)' }}>
+                  <Calendar size={14} color="var(--accent-gold)" /> {movie.release_year}
                 </span>
               )}
               {movie.runtime && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Clock size={15} color="var(--accent-gold)" /> {movie.runtime} min
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)' }}>
+                  <Clock size={14} color="var(--accent-gold)" /> {movie.runtime} min
                 </span>
               )}
               {movie.director && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <User size={15} color="var(--accent-gold)" /> Directed by {movie.director}
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-subtle)' }}>
+                  <User size={14} color="var(--accent-gold)" /> Directed by {movie.director}
                 </span>
               )}
               {(movie.vote_average || movie.rating) && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-gold)', fontWeight: 700 }}>
-                  <Star size={15} fill="var(--accent-gold)" /> {(movie.vote_average || movie.rating)?.toFixed(1)} / 10
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-gold)', fontWeight: 700, background: 'rgba(245, 179, 53, 0.12)', border: '1px solid rgba(245, 179, 53, 0.3)', padding: '0.25rem 0.65rem', borderRadius: 'var(--radius-full)' }}>
+                  <Star size={14} fill="var(--accent-gold)" /> {(movie.vote_average || movie.rating)?.toFixed(1)} / 10
                 </span>
               )}
             </div>
 
             {/* Genres */}
             {movie.genres && movie.genres.length > 0 && (
-              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {movie.genres.map((g) => (
                   <span
                     key={g.id}
                     style={{
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '0.2rem 0.6rem',
+                      background: 'rgba(0, 229, 255, 0.08)',
+                      border: '1px solid rgba(0, 229, 255, 0.22)',
+                      padding: '0.25rem 0.75rem',
                       borderRadius: 'var(--radius-full)',
-                      fontSize: '0.75rem',
-                      color: 'var(--text-secondary)'
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: 'var(--accent-cyan)'
                     }}
                   >
                     {g.name}
@@ -189,7 +192,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
             )}
 
             {movie.overview && (
-              <p style={{ color: '#d0d7de', fontSize: '1.02rem', lineHeight: 1.65, maxWidth: 740 }}>
+              <p style={{ color: '#d0d7de', fontSize: '1.02rem', lineHeight: 1.65, maxWidth: 760 }}>
                 {movie.overview}
               </p>
             )}
@@ -200,9 +203,9 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                 type="button"
                 onClick={() => onLogMovie(movie)}
                 className="btn btn-gold"
-                style={{ padding: '0.65rem 1.4rem' }}
+                style={{ padding: '0.7rem 1.6rem', fontSize: '0.92rem' }}
               >
-                <Plus size={16} /> Log This Film to Vault
+                <Plus size={17} /> Log This Film to Vault
               </button>
 
               {movie.trailer_key && (
@@ -211,13 +214,14 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                   onClick={() => setShowTrailer(true)}
                   className="btn btn-secondary"
                   style={{
-                    padding: '0.65rem 1.25rem',
+                    padding: '0.7rem 1.4rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '0.5rem',
+                    fontSize: '0.92rem'
                   }}
                 >
-                  <Play size={15} fill="#fff" /> Watch Trailer
+                  <Play size={16} fill="#fff" /> Watch Trailer
                 </button>
               )}
             </div>
@@ -256,24 +260,15 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                 <div
                   key={actor.person_id}
                   onClick={() => onSelectPerson && onSelectPerson(actor.person_id)}
-                  style={{
-                    minWidth: 120,
-                    maxWidth: 120,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    cursor: onSelectPerson ? 'pointer' : 'default',
-                    transition: 'all 0.2s ease',
-                    textAlign: 'center'
-                  }}
+                  className="cast-chip-card"
+                  style={{ cursor: onSelectPerson ? 'pointer' : 'default' }}
                 >
                   <img
                     src={photoUrl}
                     alt={actor.name}
-                    style={{ width: '100%', height: 140, objectFit: 'cover' }}
+                    style={{ width: '100%', height: 145, objectFit: 'cover', transition: 'transform 0.25s ease' }}
                   />
-                  <div style={{ padding: '0.5rem 0.35rem' }}>
+                  <div style={{ padding: '0.6rem 0.4rem' }}>
                     <p
                       style={{
                         fontSize: '0.82rem',
@@ -399,26 +394,17 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                 <div
                   key={sim.tmdb_id}
                   onClick={() => onSelectMovie && onSelectMovie(sim)}
-                  style={{
-                    minWidth: 140,
-                    maxWidth: 140,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    cursor: onSelectMovie ? 'pointer' : 'default',
-                    transition: 'all 0.2s ease'
-                  }}
+                  className="similar-chip-card"
                 >
                   <img
                     src={simPoster}
                     alt={sim.title}
-                    style={{ width: '100%', height: 210, objectFit: 'cover' }}
+                    style={{ width: '100%', height: 215, objectFit: 'cover', transition: 'transform 0.25s ease' }}
                   />
-                  <div style={{ padding: '0.5rem' }}>
+                  <div style={{ padding: '0.6rem 0.5rem' }}>
                     <p
                       style={{
-                        fontSize: '0.82rem',
+                        fontSize: '0.84rem',
                         fontWeight: 700,
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
@@ -428,7 +414,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
                     >
                       {sim.title}
                     </p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                       {sim.release_year || ''}
                     </p>
                   </div>

@@ -34,3 +34,8 @@ build/
 *.sln
 *.sw?
 .DS_Store
+
+# Antigravity & Agent configs
+.agents/
+.gemini/
+mcp_config.json
