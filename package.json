@@ -2,9 +2,10 @@
   "name": "cinevault",
   "version": "1.0.0",
   "description": "Personal Movie Diary & Tracker with Granular Privacy",
-  "main": "api/index.ts",
+  "main": "server/dist/index.js",
   "scripts": {
-    "build": "cd client && npm install && npm run build",
+    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server && npm run build --prefix server",
+    "start": "npm start --prefix server",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
     "install:all": "npm install && npm run install:server && npm run install:client",
@@ -14,8 +15,7 @@
     "dev:client": "cd client && npm run dev",
     "ingest:imdb": "cd server && npm run ingest:imdb",
     "ingest:imdb:all": "cd server && npm run ingest:imdb:all",
-    "test:privacy": "cd server && npm test",
-    "start": "cd server && npm start"
+    "test:privacy": "cd server && npm test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

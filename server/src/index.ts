@@ -54,10 +54,11 @@ app.get(['/api/health', '/health'], async (_req, res) => {
 });
 
 // Serve frontend static build if present
-const clientDist = path.resolve(__dirname, '../../client/dist');
+const clientDist = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientDist));
-app.get('*', (_req, res, next) => {
-  if (_req.path.startsWith('/api')) return next();
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
   const indexHtml = path.join(clientDist, 'index.html');
   res.sendFile(indexHtml, (err) => {
     if (err) {
@@ -69,8 +70,9 @@ app.get('*', (_req, res, next) => {
 // Start server only when executed directly (not when imported in tests)
 if (require.main === module && process.env.NODE_ENV !== 'test') {
   getDb().then(() => {
-    app.listen(PORT, () => {
-      console.log(`🎬 CineVault Server running on http://localhost:${PORT}`);
+    const port = Number(PORT) || 5000;
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`🎬 CineVault Server running on http://0.0.0.0:${port}`);
     });
   }).catch((err) => {
     console.error('Failed to initialize database on startup:', err);

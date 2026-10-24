@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "copy-schema": "node -e \"const fs=require('fs'); const path=require('path'); const serverDir=fs.existsSync('src/db/schema.sql') ? '.' : 'server'; const dest=path.resolve(serverDir, 'dist/db'); if(!fs.existsSync(dest)) fs.mkdirSync(dest, {recursive:true}); fs.copyFileSync(path.resolve(serverDir, 'src/db/schema.sql'), path.join(dest, 'schema.sql'));\"",
+    "build": "tsc && npm run copy-schema",
     "start": "node dist/index.js",
     "test": "tsx tests/privacy.test.ts && tsx tests/features.test.ts",
     "ingest:imdb": "tsx src/scripts/ingest-imdb.ts",
