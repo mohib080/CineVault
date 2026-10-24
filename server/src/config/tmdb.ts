@@ -461,3 +461,43 @@ export async function getPersonDetailsTMDB(personId: number): Promise<PersonDeta
 export function getCuratedPopular(): TMDBMovie[] {
   return LETTERBOXD_CATALOG;
 }
+
+export async function searchPeopleTMDB(query: string): Promise<Array<{
+  id: number;
+  name: string;
+  profile_path?: string;
+  known_for_department?: string;
+}>> {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (apiKey && apiKey.trim() !== '') {
+    try {
+      const url = `${TMDB_BASE_URL}/search/person?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return (data.results || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          profile_path: p.profile_path,
+          known_for_department: p.known_for_department
+        }));
+      }
+    } catch (err) {
+      console.warn('TMDB person search failed:', err);
+    }
+  }
+
+  // Fallback
+  const q = query.toLowerCase().trim();
+  const directors = [
+    { id: 525, name: 'Christopher Nolan', known_for_department: 'Directing' },
+    { id: 137427, name: 'Denis Villeneuve', known_for_department: 'Directing' },
+    { id: 1032, name: 'Martin Scorsese', known_for_department: 'Directing' },
+    { id: 138, name: 'Quentin Tarantino', known_for_department: 'Directing' },
+    { id: 7467, name: 'David Fincher', known_for_department: 'Directing' },
+    { id: 2034, name: 'Cillian Murphy', known_for_department: 'Acting' },
+    { id: 1190668, name: 'Timothée Chalamet', known_for_department: 'Acting' }
+  ];
+  return directors.filter((d) => d.name.toLowerCase().includes(q));
+}
+

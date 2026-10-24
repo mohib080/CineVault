@@ -1,9 +1,25 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { db } from '../config/db';
-import { getPersonDetailsTMDB } from '../config/tmdb';
+import { getPersonDetailsTMDB, searchPeopleTMDB } from '../config/tmdb';
 import { optionalAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
+
+// GET /api/people/search?q=...
+router.get('/search', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = (req.query.q as string) || '';
+    if (!q.trim()) {
+      res.json({ results: [] });
+      return;
+    }
+    const results = await searchPeopleTMDB(q.trim());
+    res.json({ results });
+  } catch (err: any) {
+    console.error('Person search error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to search people.' });
+  }
+});
 
 // GET /api/people/:personId
 router.get('/:personId', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {

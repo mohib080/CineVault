@@ -9,14 +9,17 @@ import { ListsPage } from './pages/ListsPage';
 import { SharedVault } from './pages/SharedVault';
 import { UserProfile } from './pages/UserProfile';
 import { LogMovieModal } from './components/LogMovieModal';
+import { LetterboxdImportModal } from './components/LetterboxdImportModal';
 import { AuthModal } from './pages/AuthPage';
 import { Movie, DiaryEntry, api } from './services/api';
 import { Search, Film, X } from 'lucide-react';
 
+export type TabType = 'home' | 'movies' | 'explore' | 'calendar' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared' | 'person';
+
 function AppContent() {
   const { user } = useAuth();
 
-  const [currentTab, setCurrentTab] = useState<'home' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared' | 'person'>('home');
+  const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
@@ -25,6 +28,7 @@ function AppContent() {
   const [logModalMovie, setLogModalMovie] = useState<Movie | null>(null);
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showQuickSearchModal, setShowQuickSearchModal] = useState(false);
   const [quickSearchInput, setQuickSearchInput] = useState('');
   const [quickSearchResults, setQuickSearchResults] = useState<Movie[]>([]);
@@ -101,7 +105,7 @@ function AppContent() {
             setSearchQuery('');
             setCurrentTab('home');
           } else {
-            setCurrentTab(tab as any);
+            setCurrentTab(tab as TabType);
           }
         }}
         onSearchMovie={(q) => {
@@ -109,8 +113,10 @@ function AppContent() {
           setCurrentTab('home');
         }}
         onSelectMovie={handleSelectMovie}
+        onSelectPerson={handleSelectPerson}
         onQuickLog={handleQuickLogTrigger}
         onOpenAuth={(mode) => setAuthModalMode(mode)}
+        onOpenImportCSV={() => setShowImportModal(true)}
       />
 
       <main className="main-content">
@@ -127,7 +133,7 @@ function AppContent() {
           />
         )}
 
-        {currentTab === 'home' && (
+        {(currentTab === 'home' || currentTab === 'movies' || currentTab === 'explore') && (
           <Home
             searchQuery={searchQuery}
             onLogMovie={handleOpenLogForMovie}
@@ -136,7 +142,7 @@ function AppContent() {
           />
         )}
 
-        {currentTab === 'dashboard' && (
+        {(currentTab === 'dashboard' || currentTab === 'calendar') && (
           <Dashboard
             onQuickLog={handleQuickLogTrigger}
             onSelectMovie={handleSelectMovie}
@@ -217,6 +223,21 @@ function AppContent() {
           onSuccess={() => {
             setAuthModalMode(null);
             if (currentTab === 'home') {
+              setCurrentTab('dashboard');
+            }
+          }}
+        />
+      )}
+
+      {/* Letterboxd CSV Import Modal */}
+      {showImportModal && (
+        <LetterboxdImportModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => {
+            setShowImportModal(false);
+            if (currentTab === 'dashboard') {
+              window.location.reload();
+            } else {
               setCurrentTab('dashboard');
             }
           }}

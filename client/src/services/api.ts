@@ -129,6 +129,13 @@ export interface PersonDetail {
   };
 }
 
+export interface PersonSearchItem {
+  id: number;
+  name: string;
+  profile_path?: string;
+  known_for_department?: string;
+}
+
 export interface DiscoverResponse {
   results: Movie[];
   page: number;
@@ -201,6 +208,7 @@ export const api = {
 
   // People (Cast & Crew filmographies)
   getPersonDetail: (personId: number) => request<PersonDetail>(`/people/${personId}`),
+  searchPeople: (query: string) => request<{ results: PersonSearchItem[] }>(`/people/search?q=${encodeURIComponent(query)}`),
 
   // Top 4 Favorites
   getUserFavorites: (username: string) => request<{ favorites: FavoriteMovie[] }>(`/users/${encodeURIComponent(username)}/favorites`),

@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Movie, Genre, api } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { Movie, Genre, DiaryEntry, api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { MovieCard } from '../components/MovieCard';
 import { TrailerModal } from '../components/TrailerModal';
 import {
   Shield,
   Sparkles,
-  Lock,
-  Link2,
-  Globe,
-  Search,
   Flame,
   Trophy,
   CalendarDays,
   Star,
-  Filter,
-  Loader2,
-  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Play,
   Plus,
-  Play
+  Loader2,
+  X,
+  Compass,
+  Film
 } from 'lucide-react';
 
 interface HomeProps {
@@ -54,17 +54,50 @@ const DECADES = [
 ];
 
 export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQuery, onClearSearch }) => {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [category, setCategory] = useState<'trending' | 'popular' | 'top_rated' | 'upcoming'>('trending');
+  const { user } = useAuth();
+
+  // Hero Spotlight Carousel State
+  const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
+  const [activeHeroIndex, setActiveHeroIndex] = useState(0);
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
+
+  // Swimlanes Data
+  const [vaultRecent, setVaultRecent] = useState<DiaryEntry[]>([]);
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
+  const [trendingWindow, setTrendingWindow] = useState<'trending' | 'popular'>('trending');
+  const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>([]);
+  const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
+
+  // Catalogue Grid State
+  const [catalogueMovies, setCatalogueMovies] = useState<Movie[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [cataloguePage, setCataloguePage] = useState(1);
+  const [totalCataloguePages, setTotalCataloguePages] = useState(1);
+  const [loadingCatalogue, setLoadingCatalogue] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Search Results State
+  const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Trailer Modal
   const [activeTrailer, setActiveTrailer] = useState<{ key: string; title: string } | null>(null);
 
-  const handleWatchSpotlightTrailer = async (movie: Movie) => {
+  // Swimlane Scroll Refs
+  const vaultTrackRef = useRef<HTMLDivElement>(null);
+  const trendingTrackRef = useRef<HTMLDivElement>(null);
+  const upcomingTrackRef = useRef<HTMLDivElement>(null);
+  const topRatedTrackRef = useRef<HTMLDivElement>(null);
+
+  const scrollTrack = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = direction === 'left' ? -560 : 560;
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const handleOpenTrailer = async (movie: Movie) => {
     if (movie.trailer_key) {
       setActiveTrailer({ key: movie.trailer_key, title: movie.title });
       return;
@@ -81,402 +114,569 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
     }
   };
 
-  // Load discovery or search results
+  // 1. Initial Load for Hero Banner & Swimlanes
   useEffect(() => {
-    let isCurrent = true;
-
-    async function loadMovies() {
-      if (searchQuery.trim()) {
-        setLoading(true);
-        try {
-          const res = await api.searchMovies(searchQuery);
-          if (isCurrent) {
-            setMovies(res.results);
-            setTotalPages(1);
-            setPage(1);
-          }
-        } catch (err) {
-          console.error('Search error:', err);
-        } finally {
-          if (isCurrent) setLoading(false);
-        }
-        return;
-      }
-
-      setLoading(true);
+    async function loadHeroAndLanes() {
       try {
-        const res = await api.discoverMovies(category, 1, selectedGenre || undefined, selectedYear || undefined);
-        if (isCurrent) {
-          setMovies(res.results);
-          setTotalPages(res.total_pages);
-          setPage(1);
+        // Load Trending
+        const trendRes = await api.discoverMovies(trendingWindow, 1);
+        setTrendingMovies(trendRes.results);
+        if (heroMovies.length === 0 && trendRes.results.length > 0) {
+          setHeroMovies(trendRes.results.slice(0, 5));
         }
+
+        // Load Upcoming
+        const upRes = await api.discoverMovies('upcoming', 1);
+        setUpcomingMovies(upRes.results);
+
+        // Load Top Rated
+        const topRes = await api.discoverMovies('top_rated', 1);
+        setTopRatedMovies(topRes.results);
       } catch (err) {
-        console.error('Discover error:', err);
-      } finally {
-        if (isCurrent) setLoading(false);
+        console.warn('Initial discovery error:', err);
       }
     }
 
-    loadMovies();
+    loadHeroAndLanes();
+  }, [trendingWindow]);
 
+  // 2. Load Vault Recents if logged in
+  useEffect(() => {
+    if (user) {
+      api
+        .getMyDiary()
+        .then((res) => {
+          setVaultRecent(res.entries.slice(0, 12));
+        })
+        .catch(() => setVaultRecent([]));
+    } else {
+      setVaultRecent([]);
+    }
+  }, [user]);
+
+  // 3. Auto-Rotate Hero Banner every 7 seconds
+  useEffect(() => {
+    if (isHeroPaused || heroMovies.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveHeroIndex((prev) => (prev + 1) % heroMovies.length);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [isHeroPaused, heroMovies.length]);
+
+  // 4. Load Catalogue Grid
+  useEffect(() => {
+    let isCurrent = true;
+    async function loadCatalogue() {
+      setLoadingCatalogue(true);
+      try {
+        const res = await api.discoverMovies(
+          'popular',
+          1,
+          selectedGenre || undefined,
+          selectedYear || undefined
+        );
+        if (isCurrent) {
+          setCatalogueMovies(res.results);
+          setCataloguePage(1);
+          setTotalCataloguePages(res.total_pages);
+        }
+      } catch (err) {
+        console.warn('Catalogue load error:', err);
+      } finally {
+        if (isCurrent) setLoadingCatalogue(false);
+      }
+    }
+
+    loadCatalogue();
     return () => {
       isCurrent = false;
     };
-  }, [searchQuery, category, selectedGenre, selectedYear]);
+  }, [selectedGenre, selectedYear]);
 
-  // Load More pagination
-  const handleLoadMore = async () => {
-    if (page >= totalPages || loadingMore) return;
+  // 5. Handle Live Search
+  useEffect(() => {
+    let isCurrent = true;
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    async function doSearch() {
+      setIsSearching(true);
+      try {
+        const res = await api.searchMovies(searchQuery.trim());
+        if (isCurrent) {
+          setSearchResults(res.results);
+        }
+      } catch (err) {
+        console.warn('Search query error:', err);
+      } finally {
+        if (isCurrent) setIsSearching(false);
+      }
+    }
+
+    doSearch();
+    return () => {
+      isCurrent = false;
+    };
+  }, [searchQuery]);
+
+  // Load More Catalogue
+  const handleLoadMoreCatalogue = async () => {
+    if (cataloguePage >= totalCataloguePages || loadingMore) return;
     setLoadingMore(true);
-    const nextPage = page + 1;
-
+    const nextPage = cataloguePage + 1;
     try {
-      const res = await api.discoverMovies(category, nextPage, selectedGenre || undefined, selectedYear || undefined);
-      setMovies((prev) => {
+      const res = await api.discoverMovies(
+        'popular',
+        nextPage,
+        selectedGenre || undefined,
+        selectedYear || undefined
+      );
+      setCatalogueMovies((prev) => {
         const existingIds = new Set(prev.map((m) => m.tmdb_id));
         const newOnes = res.results.filter((m) => !existingIds.has(m.tmdb_id));
         return [...prev, ...newOnes];
       });
-      setPage(nextPage);
-      setTotalPages(res.total_pages);
+      setCataloguePage(nextPage);
     } catch (err) {
-      console.error('Failed to load more films:', err);
+      console.warn('Load more error:', err);
     } finally {
       setLoadingMore(false);
     }
   };
 
-  return (
-    <div>
-      {/* Hero section */}
-      {!searchQuery && (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '2.5rem 1rem 3.5rem',
-            position: 'relative'
-          }}
-        >
+  const currentHero = heroMovies[activeHeroIndex] || heroMovies[0];
+  const heroBackdropUrl = currentHero?.backdrop_path
+    ? (currentHero.backdrop_path.startsWith('http')
+        ? currentHero.backdrop_path
+        : `https://image.tmdb.org/t/p/original${currentHero.backdrop_path}`)
+    : 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&auto=format&fit=crop&q=80';
+
+  const heroScore = currentHero?.vote_average || currentHero?.rating;
+
+  // Render Search View if Active
+  if (searchQuery.trim()) {
+    return (
+      <div className="content-container">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Compass size={22} color="var(--accent-cyan)" />
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: '#ffffff' }}>
+                Search Results
+              </h2>
+            </div>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              Showing matches for "{searchQuery}"
+            </p>
+          </div>
+
+          {onClearSearch && (
+            <button
+              className="btn-bb-secondary"
+              onClick={onClearSearch}
+              style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+            >
+              <X size={15} /> Clear Search
+            </button>
+          )}
+        </div>
+
+        {isSearching ? (
+          <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)' }}>
+            <Loader2 size={32} className="spin" style={{ margin: '0 auto 1rem', color: 'var(--accent-gold)' }} />
+            <p>Searching global film vaults & catalog...</p>
+          </div>
+        ) : searchResults.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)' }}>
+            <h3>No movies or series found</h3>
+            <p style={{ marginTop: '0.5rem' }}>Try searching another keyword, director, or actor.</p>
+          </div>
+        ) : (
           <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.35rem 0.9rem',
-              borderRadius: 'var(--radius-full)',
-              background: 'rgba(0, 229, 255, 0.1)',
-              border: '1px solid rgba(0, 229, 255, 0.3)',
-              color: 'var(--accent-cyan)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              marginBottom: '1.25rem'
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: '1.5rem'
             }}
           >
-            <Shield size={14} /> Granular 3-Tier Privacy Architecture
+            {searchResults.map((movie) => (
+              <MovieCard
+                key={movie.tmdb_id}
+                movie={movie}
+                onLogClick={onLogMovie}
+                onTrailerClick={handleOpenTrailer}
+                onClick={onSelectMovie}
+              />
+            ))}
           </div>
+        )}
 
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '3.2rem',
-              fontWeight: 800,
-              letterSpacing: '-1.5px',
-              lineHeight: 1.15,
-              marginBottom: '1.25rem'
-            }}
-          >
-            The Movie Diary Built For <br />
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #00e5ff 0%, #f5b335 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}
+        {activeTrailer && (
+          <TrailerModal
+            trailerKey={activeTrailer.key}
+            title={activeTrailer.title}
+            onClose={() => setActiveTrailer(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: '100%' }}>
+      {/* 1. Full-Bleed 5-Slide Auto-Rotating Hero Spotlight Banner */}
+      {currentHero && (
+        <section
+          className="bb-hero-banner"
+          style={{ backgroundImage: `url(${heroBackdropUrl})` }}
+          onMouseEnter={() => setIsHeroPaused(true)}
+          onMouseLeave={() => setIsHeroPaused(false)}
+        >
+          <div className="bb-hero-vignette" />
+
+          <div className="bb-hero-content">
+            {/* Title */}
+            <h1
+              className="bb-hero-title"
+              onClick={() => onSelectMovie(currentHero)}
+              title={currentHero.title}
             >
-              Absolute Privacy Control
-            </span>
-          </h1>
+              {currentHero.title}
+            </h1>
 
-          <p
-            style={{
-              fontSize: '1.15rem',
-              color: 'var(--text-muted)',
-              maxWidth: 640,
-              margin: '0 auto 2rem'
-            }}
-          >
-            Log films, pen reviews, and curate watchlists with total discretion. Toggle effortlessly between
-            <strong> Private</strong>, <strong>Unlisted</strong> cryptographic share links, and <strong>Public</strong> feeds.
-          </p>
-
-          {/* Privacy Architecture Bento Grid */}
-          <div className="privacy-bento-grid">
-            <div className="privacy-bento-card card-private">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--priv-private-bg)', border: '1px solid var(--priv-private-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--priv-private-text)' }}>
-                  <Lock size={18} />
+            {/* BingeBang Dot-Separated Metadata Stack */}
+            <div className="bb-hero-meta">
+              {heroScore && (
+                <div className="bb-hero-rating">
+                  <Star size={13} fill="var(--accent-gold)" />
+                  <span>{heroScore.toFixed(1)}</span>
                 </div>
-                <span className="badge-privacy PRIVATE">Private</span>
-              </div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '0.35rem' }}>Owner-Only Eyes</h3>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
-                Completely secluded diary entries and reviews visible only to you. Keep your rawest critiques and personal watch dates 100% confidential.
-              </p>
+              )}
+              {heroScore && <span className="bb-hero-meta-dot">•</span>}
+
+              {currentHero.release_year && (
+                <>
+                  <span>{currentHero.release_year}</span>
+                  <span className="bb-hero-meta-dot">•</span>
+                </>
+              )}
+
+              <span>{currentHero.title_type === 'series' ? 'TV Series' : 'Feature Film'}</span>
+
+              {currentHero.director && (
+                <>
+                  <span className="bb-hero-meta-dot">•</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Dir. {currentHero.director}</span>
+                </>
+              )}
             </div>
 
-            <div className="privacy-bento-card card-unlisted">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--priv-unlisted-bg)', border: '1px solid var(--priv-unlisted-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--priv-unlisted-text)' }}>
-                  <Link2 size={18} />
-                </div>
-                <span className="badge-privacy UNLISTED">Unlisted</span>
-              </div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '0.35rem' }}>Cryptographic URL</h3>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
-                Invisible from search engines and community streams. Share individual reviews with selected friends via unique, tamper-proof token links.
+            {/* Synopsis */}
+            {currentHero.overview && (
+              <p className="bb-hero-synopsis">
+                {currentHero.overview}
               </p>
-            </div>
+            )}
 
-            <div className="privacy-bento-card card-public">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--priv-public-bg)', border: '1px solid var(--priv-public-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--priv-public-text)' }}>
-                  <Globe size={18} />
-                </div>
-                <span className="badge-privacy PUBLIC">Public</span>
-              </div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '0.35rem' }}>CineVault Network</h3>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
-                Broadcasted to the public CineVault feed and your Letterboxd-style profile. Foster cinephile discussions and contribute to community ratings.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Featured Spotlight Banner (Discovery Mode) */}
-      {!searchQuery && movies.length > 0 && page === 1 && (
-        (() => {
-          const spotlight = movies[0];
-          const backdrop = spotlight.backdrop_path
-            ? (spotlight.backdrop_path.startsWith('http') ? spotlight.backdrop_path : `https://image.tmdb.org/t/p/original${spotlight.backdrop_path}`)
-            : null;
-          const poster = spotlight.poster_path
-            ? (spotlight.poster_path.startsWith('http') ? spotlight.poster_path : `https://image.tmdb.org/t/p/w500${spotlight.poster_path}`)
-            : 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80';
-
-          return (
-            <div
-              className="hero-spotlight-banner"
-              style={{
-                position: 'relative',
-                backgroundImage: backdrop
-                  ? `linear-gradient(to right, rgba(6, 8, 12, 0.98) 25%, rgba(6, 8, 12, 0.85) 60%, rgba(6, 8, 12, 0.4) 100%), url(${backdrop})`
-                  : 'linear-gradient(135deg, #10151f 0%, #06080c 100%)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                padding: '2.5rem 2.25rem',
-                minHeight: '320px',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <div
-                className="spotlight-content"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2.5rem',
-                  width: '100%',
-                  zIndex: 2
-                }}
+            {/* Action CTA Buttons */}
+            <div className="bb-hero-actions">
+              <button
+                className="btn-bb-primary"
+                onClick={() => onLogMovie(currentHero)}
               >
-                <div
-                  className="spotlight-poster"
-                  style={{
-                    width: 170,
-                    aspectRatio: '2/3',
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    boxShadow: '0 12px 35px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    flexShrink: 0,
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => onSelectMovie(spotlight)}
-                >
-                  <img
-                    src={poster}
-                    alt={spotlight.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
+                <Plus size={18} strokeWidth={2.8} /> Log to Vault
+              </button>
 
-                <div style={{ flex: 1, minWidth: 260 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        background: 'linear-gradient(135deg, rgba(245, 179, 53, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%)',
-                        color: 'var(--accent-gold)',
-                        border: '1px solid rgba(245, 179, 53, 0.4)',
-                        padding: '0.2rem 0.65rem',
-                        borderRadius: 'var(--radius-full)',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.6px'
-                      }}
-                    >
-                      <Flame size={13} /> Featured Spotlight
-                    </span>
-                    {(spotlight.vote_average || spotlight.rating) && (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.3rem',
-                          background: 'rgba(0, 0, 0, 0.6)',
-                          backdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(245, 179, 53, 0.3)',
-                          color: 'var(--accent-gold)',
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: '0.78rem',
-                          fontWeight: 700
-                        }}
-                      >
-                        <Star size={13} fill="var(--accent-gold)" /> {(spotlight.vote_average || spotlight.rating)?.toFixed(1)} TMDB
-                      </span>
-                    )}
-                    {spotlight.release_year && (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        {spotlight.release_year}
-                      </span>
-                    )}
-                  </div>
+              <button
+                className="btn-bb-secondary"
+                onClick={() => handleOpenTrailer(currentHero)}
+              >
+                <Play size={16} fill="#ffffff" /> Watch Trailer
+              </button>
 
-                  <h2
-                    onClick={() => onSelectMovie(spotlight)}
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '2.2rem',
-                      fontWeight: 800,
-                      lineHeight: 1.2,
-                      cursor: 'pointer',
-                      marginBottom: '0.75rem',
-                      color: '#ffffff'
-                    }}
-                  >
-                    {spotlight.title}
-                  </h2>
-
-                  {spotlight.overview && (
-                    <p
-                      style={{
-                        color: '#c9d1d9',
-                        fontSize: '0.96rem',
-                        lineHeight: 1.6,
-                        maxWidth: 720,
-                        marginBottom: '1.5rem',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {spotlight.overview}
-                    </p>
-                  )}
-
-                  <div className="spotlight-actions" style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
-                    <button
-                      onClick={() => onLogMovie(spotlight)}
-                      className="btn btn-gold"
-                      style={{ padding: '0.65rem 1.4rem', fontSize: '0.9rem' }}
-                    >
-                      <Plus size={16} /> Quick Log to Vault
-                    </button>
-                    <button
-                      onClick={() => handleWatchSpotlightTrailer(spotlight)}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.65rem 1.3rem', fontSize: '0.9rem', gap: '0.45rem' }}
-                    >
-                      <Play size={15} fill="#fff" /> Watch Trailer
-                    </button>
-                    <button
-                      onClick={() => onSelectMovie(spotlight)}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.65rem 1.3rem', fontSize: '0.9rem', gap: '0.45rem' }}
-                    >
-                      View Details & Cast <ArrowRight size={15} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <button
+                className="btn-bb-circle"
+                onClick={() => onSelectMovie(currentHero)}
+                title="View Full Details"
+              >
+                <Film size={18} />
+              </button>
             </div>
-          );
-        })()
+          </div>
+
+          {/* Bottom Right Slide Indicators */}
+          {heroMovies.length > 1 && (
+            <div className="bb-hero-indicators">
+              {heroMovies.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`bb-indicator-dot ${idx === activeHeroIndex ? 'active' : ''}`}
+                  onClick={() => setActiveHeroIndex(idx)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
-      {/* Discovery Navigation & Controls */}
-      {!searchQuery && (
-        <div style={{ marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Category Tabs - Sliding Pill Dock */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                background: 'rgba(10, 14, 22, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                padding: '4px',
-                borderRadius: 'var(--radius-full)',
-                flexWrap: 'wrap',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)'
-              }}
-            >
-              {[
-                { id: 'trending', label: 'Trending This Week', icon: Flame },
-                { id: 'popular', label: 'Popular Cinema', icon: Star },
-                { id: 'top_rated', label: 'Top Rated All Time', icon: Trophy },
-                { id: 'upcoming', label: 'Anticipated & Upcoming', icon: CalendarDays }
-              ].map((tab) => {
-                const Icon = tab.icon;
-                const isActive = category === tab.id;
+      {/* Main Swimlane Content Area */}
+      <div className="content-container">
+        {/* Row 1: "Recent in Your Vault" (if user logged in & has logs) */}
+        {user && vaultRecent.length > 0 && (
+          <section className="bb-swimlane">
+            <div className="bb-swimlane-header">
+              <div className="bb-swimlane-title-group">
+                <h3 className="bb-swimlane-title">
+                  <Shield size={22} color="var(--accent-cyan)" /> Recent in Your Vault
+                </h3>
+                <span className="bb-swimlane-subtitle">
+                  Pick up where you left off in your private cinema diary
+                </span>
+              </div>
+
+              <div className="bb-swimlane-controls">
+                <button
+                  className="bb-arrow-btn"
+                  onClick={() => scrollTrack(vaultTrackRef, 'left')}
+                  title="Scroll Left"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  className="bb-arrow-btn"
+                  onClick={() => scrollTrack(vaultTrackRef, 'right')}
+                  title="Scroll Right"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div ref={vaultTrackRef} className="bb-swimlane-track">
+              {vaultRecent.map((entry) => {
+                const asMovie: Movie = {
+                  tmdb_id: entry.tmdb_id,
+                  title: entry.title || 'Logged Film',
+                  release_year: entry.release_year,
+                  poster_path: entry.poster_path,
+                  backdrop_path: entry.backdrop_path,
+                  director: entry.director,
+                  runtime: entry.runtime
+                };
+
                 return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setCategory(tab.id as any)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      padding: '0.5rem 1.15rem',
-                      borderRadius: 'var(--radius-full)',
-                      fontSize: '0.85rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      background: isActive ? 'var(--accent-gold-gradient)' : 'transparent',
-                      color: isActive ? '#050a12' : 'var(--text-muted)',
-                      border: 'none',
-                      boxShadow: isActive ? '0 2px 14px var(--accent-gold-glow)' : 'none',
-                      transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)'
+                  <MovieCard
+                    key={`vault-${entry.id}`}
+                    movie={{
+                      ...asMovie,
+                      rating: entry.rating || undefined,
+                      visibility: entry.visibility
                     }}
-                  >
-                    <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
-                    {tab.label}
-                  </button>
+                    onLogClick={onLogMovie}
+                    onTrailerClick={handleOpenTrailer}
+                    onClick={onSelectMovie}
+                  />
                 );
               })}
             </div>
+          </section>
+        )}
 
-            {/* Decade Filter Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Filter size={15} color="var(--text-muted)" />
+        {/* Row 2: "Trending Movies" with Segmented Pill Toggle */}
+        <section className="bb-swimlane">
+          <div className="bb-swimlane-header">
+            <div className="bb-swimlane-title-group">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <h3 className="bb-swimlane-title">
+                  <Flame size={22} color="var(--accent-gold)" /> Trending Movies
+                </h3>
+                <div
+                  style={{
+                    display: 'flex',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: 'var(--radius-full)',
+                    padding: 2,
+                    border: '1px solid var(--border-subtle)'
+                  }}
+                >
+                  <button
+                    onClick={() => setTrendingWindow('trending')}
+                    style={{
+                      padding: '0.2rem 0.65rem',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-full)',
+                      background: trendingWindow === 'trending' ? 'var(--accent-gold)' : 'transparent',
+                      color: trendingWindow === 'trending' ? '#000' : 'var(--text-muted)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    This Week
+                  </button>
+                  <button
+                    onClick={() => setTrendingWindow('popular')}
+                    style={{
+                      padding: '0.2rem 0.65rem',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-full)',
+                      background: trendingWindow === 'popular' ? 'var(--accent-gold)' : 'transparent',
+                      color: trendingWindow === 'popular' ? '#000' : 'var(--text-muted)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Popular
+                  </button>
+                </div>
+              </div>
+              <span className="bb-swimlane-subtitle">
+                The most watched and logged films across world cinema
+              </span>
+            </div>
+
+            <div className="bb-swimlane-controls">
+              <button
+                className="bb-arrow-btn"
+                onClick={() => scrollTrack(trendingTrackRef, 'left')}
+                title="Scroll Left"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                className="bb-arrow-btn"
+                onClick={() => scrollTrack(trendingTrackRef, 'right')}
+                title="Scroll Right"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div ref={trendingTrackRef} className="bb-swimlane-track">
+            {trendingMovies.map((movie) => (
+              <MovieCard
+                key={`trending-${movie.tmdb_id}`}
+                movie={movie}
+                onLogClick={onLogMovie}
+                onTrailerClick={handleOpenTrailer}
+                onClick={onSelectMovie}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Row 3: "New Releases & In Theaters" */}
+        <section className="bb-swimlane">
+          <div className="bb-swimlane-header">
+            <div className="bb-swimlane-title-group">
+              <h3 className="bb-swimlane-title">
+                <CalendarDays size={22} color="var(--accent-cyan)" /> New Releases & In Theaters
+              </h3>
+              <span className="bb-swimlane-subtitle">
+                Freshly arrived in cinemas and upcoming premieres
+              </span>
+            </div>
+
+            <div className="bb-swimlane-controls">
+              <button
+                className="bb-arrow-btn"
+                onClick={() => scrollTrack(upcomingTrackRef, 'left')}
+                title="Scroll Left"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                className="bb-arrow-btn"
+                onClick={() => scrollTrack(upcomingTrackRef, 'right')}
+                title="Scroll Right"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div ref={upcomingTrackRef} className="bb-swimlane-track">
+            {upcomingMovies.map((movie) => (
+              <MovieCard
+                key={`upcoming-${movie.tmdb_id}`}
+                movie={movie}
+                onLogClick={onLogMovie}
+                onTrailerClick={handleOpenTrailer}
+                onClick={onSelectMovie}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Row 4: "Top Rated Classics" */}
+        <section className="bb-swimlane">
+          <div className="bb-swimlane-header">
+            <div className="bb-swimlane-title-group">
+              <h3 className="bb-swimlane-title">
+                <Trophy size={22} color="var(--accent-gold)" /> Top Rated Classics
+              </h3>
+              <span className="bb-swimlane-subtitle">
+                The highest-rated cinematic masterworks of all time
+              </span>
+            </div>
+
+            <div className="bb-swimlane-controls">
+              <button
+                className="bb-arrow-btn"
+                onClick={() => scrollTrack(topRatedTrackRef, 'left')}
+                title="Scroll Left"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                className="bb-arrow-btn"
+                onClick={() => scrollTrack(topRatedTrackRef, 'right')}
+                title="Scroll Right"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div ref={topRatedTrackRef} className="bb-swimlane-track">
+            {topRatedMovies.map((movie) => (
+              <MovieCard
+                key={`toprated-${movie.tmdb_id}`}
+                movie={movie}
+                onLogClick={onLogMovie}
+                onTrailerClick={handleOpenTrailer}
+                onClick={onSelectMovie}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Row 5: "Explore Full Catalogue" with Genre Pills & Decade Filter */}
+        <section style={{ marginTop: '4.5rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              marginBottom: '1.5rem',
+              gap: '1rem',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div>
+              <h3 className="bb-swimlane-title">
+                <Compass size={22} color="var(--accent-cyan)" /> Explore Full Catalogue
+              </h3>
+              <span className="bb-swimlane-subtitle">
+                Filter by genre and release decade to unearth hidden cinematic gems
+              </span>
+            </div>
+
+            {/* Decade Dropdown Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <select
                 value={selectedYear || 0}
                 onChange={(e) => {
@@ -484,18 +684,18 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
                   setSelectedYear(val === 0 ? null : val);
                 }}
                 style={{
-                  background: 'rgba(10, 14, 22, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'var(--text-primary)',
-                  padding: '0.5rem 0.95rem',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid var(--border-subtle)',
+                  color: '#ffffff',
+                  padding: '0.45rem 1rem',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-mono)'
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  cursor: 'pointer'
                 }}
               >
                 {DECADES.map((d) => (
-                  <option key={d.label} value={d.value}>
+                  <option key={d.value} value={d.value} style={{ background: '#0e1118', color: '#fff' }}>
                     {d.label}
                   </option>
                 ))}
@@ -503,26 +703,35 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
             </div>
           </div>
 
-          {/* Genre Filter Pills */}
-          <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.4rem' }}>
+          {/* Sliding Genre Pills */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              overflowX: 'auto',
+              paddingBottom: '1rem',
+              marginBottom: '1.5rem',
+              scrollbarWidth: 'none'
+            }}
+          >
             <button
               onClick={() => setSelectedGenre(null)}
               style={{
-                padding: '0.35rem 0.85rem',
+                padding: '0.4rem 1rem',
                 borderRadius: 'var(--radius-full)',
-                fontSize: '0.78rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                background: selectedGenre === null ? 'rgba(0, 229, 255, 0.18)' : 'rgba(10, 14, 22, 0.75)',
-                border: selectedGenre === null ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                color: selectedGenre === null ? '#fff' : 'var(--text-muted)',
-                boxShadow: selectedGenre === null ? '0 0 12px rgba(0, 229, 255, 0.25)' : 'none',
-                transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
+                transition: 'all 0.2s ease',
+                background: selectedGenre === null ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                color: selectedGenre === null ? '#06070a' : 'var(--text-secondary)',
+                border: selectedGenre === null ? 'none' : '1px solid var(--border-subtle)'
               }}
             >
               All Genres
             </button>
+
             {STANDARD_GENRES.map((g) => {
               const isSelected = selectedGenre === g.id;
               return (
@@ -530,17 +739,16 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
                   key={g.id}
                   onClick={() => setSelectedGenre(isSelected ? null : g.id)}
                   style={{
-                    padding: '0.35rem 0.85rem',
+                    padding: '0.4rem 1rem',
                     borderRadius: 'var(--radius-full)',
-                    fontSize: '0.78rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
-                    background: isSelected ? 'rgba(0, 229, 255, 0.18)' : 'rgba(10, 14, 22, 0.75)',
-                    border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                    color: isSelected ? '#fff' : 'var(--text-muted)',
-                    boxShadow: isSelected ? '0 0 12px rgba(0, 229, 255, 0.25)' : 'none',
-                    transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)'
+                    transition: 'all 0.2s ease',
+                    background: isSelected ? 'var(--accent-gold)' : 'rgba(255, 255, 255, 0.05)',
+                    color: isSelected ? '#000000' : 'var(--text-secondary)',
+                    border: isSelected ? 'none' : '1px solid var(--border-subtle)'
                   }}
                 >
                   {g.name}
@@ -548,99 +756,58 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
               );
             })}
           </div>
-        </div>
-      )}
 
-      {/* Movies Grid Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {searchQuery ? (
-              <>
-                <Search size={20} color="var(--accent-cyan)" /> Results for "{searchQuery}"
-              </>
-            ) : (
-              <>
-                <Sparkles size={20} color="var(--accent-gold)" />
-                {category === 'trending'
-                  ? 'Trending Films'
-                  : category === 'top_rated'
-                  ? 'Top Rated Films'
-                  : category === 'upcoming'
-                  ? 'Upcoming Releases'
-                  : 'Popular Cinema'}
-              </>
-            )}
-          </h2>
-          {searchQuery && onClearSearch && (
-            <button
-              onClick={onClearSearch}
-              className="btn btn-secondary"
-              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
-
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          {movies.length} films loaded
-        </span>
-      </div>
-
-      {/* Grid */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: '1rem' }}>
-          <Loader2 size={32} className="animate-spin" color="var(--accent-gold)" />
-          <p style={{ color: 'var(--text-muted)' }}>Discovering titles...</p>
-        </div>
-      ) : movies.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>No titles found matching your filter criteria.</p>
-        </div>
-      ) : (
-        <>
-          <div className="movie-grid">
-            {movies.map((m) => (
-              <MovieCard
-                key={m.tmdb_id}
-                movie={m}
-                onLogClick={onLogMovie}
-                onClick={onSelectMovie}
-              />
-            ))}
-          </div>
-
-          {/* Load More Pagination */}
-          {!searchQuery && page < totalPages && (
-            <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-              <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="btn btn-secondary"
+          {/* Catalogue Grid */}
+          {loadingCatalogue ? (
+            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
+              <Loader2 size={30} className="spin" style={{ margin: '0 auto 1rem', color: 'var(--accent-gold)' }} />
+              <p>Loading catalogue...</p>
+            </div>
+          ) : (
+            <>
+              <div
                 style={{
-                  padding: '0.75rem 2.25rem',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.6rem'
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                  gap: '1.5rem'
                 }}
               >
-                {loadingMore ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> Loading more...
-                  </>
-                ) : (
-                  'Load More Films'
-                )}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+                {catalogueMovies.map((movie) => (
+                  <MovieCard
+                    key={`cat-${movie.tmdb_id}`}
+                    movie={movie}
+                    onLogClick={onLogMovie}
+                    onTrailerClick={handleOpenTrailer}
+                    onClick={onSelectMovie}
+                  />
+                ))}
+              </div>
 
-      {/* Trailer Modal */}
+              {/* Load More Button */}
+              {cataloguePage < totalCataloguePages && (
+                <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+                  <button
+                    className="btn-bb-secondary"
+                    onClick={handleLoadMoreCatalogue}
+                    disabled={loadingMore}
+                    style={{ padding: '0.75rem 2.5rem', fontSize: '0.92rem' }}
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 size={16} className="spin" /> Loading More...
+                      </>
+                    ) : (
+                      'Load More Titles'
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+
+      {/* Embedded Trailer Modal */}
       {activeTrailer && (
         <TrailerModal
           trailerKey={activeTrailer.key}
