@@ -15,7 +15,6 @@ import {
   Play,
   Plus,
   Loader2,
-  X,
   Compass,
   Film
 } from 'lucide-react';
@@ -23,7 +22,7 @@ import {
 interface HomeProps {
   onLogMovie: (movie: Movie) => void;
   onSelectMovie: (movie: Movie) => void;
-  searchQuery: string;
+  searchQuery?: string;
   onClearSearch?: () => void;
 }
 
@@ -76,10 +75,6 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
   const [totalCataloguePages, setTotalCataloguePages] = useState(1);
   const [loadingCatalogue, setLoadingCatalogue] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // Search Results State
-  const [searchResults, setSearchResults] = useState<Movie[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
 
   // Trailer Modal
   const [activeTrailer, setActiveTrailer] = useState<{ key: string; title: string } | null>(null);
@@ -193,35 +188,6 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
     };
   }, [selectedGenre, selectedYear]);
 
-  // 5. Handle Live Search
-  useEffect(() => {
-    let isCurrent = true;
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    async function doSearch() {
-      setIsSearching(true);
-      try {
-        const res = await api.searchMovies(searchQuery.trim());
-        if (isCurrent) {
-          setSearchResults(res.results);
-        }
-      } catch (err) {
-        console.warn('Search query error:', err);
-      } finally {
-        if (isCurrent) setIsSearching(false);
-      }
-    }
-
-    doSearch();
-    return () => {
-      isCurrent = false;
-    };
-  }, [searchQuery]);
-
   // Load More Catalogue
   const handleLoadMoreCatalogue = async () => {
     if (cataloguePage >= totalCataloguePages || loadingMore) return;
@@ -255,75 +221,6 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
     : 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&auto=format&fit=crop&q=80';
 
   const heroScore = currentHero?.vote_average || currentHero?.rating;
-
-  // Render Search View if Active
-  if (searchQuery.trim()) {
-    return (
-      <div className="content-container">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Compass size={22} color="var(--accent-cyan)" />
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: '#ffffff' }}>
-                Search Results
-              </h2>
-            </div>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              Showing matches for "{searchQuery}"
-            </p>
-          </div>
-
-          {onClearSearch && (
-            <button
-              className="btn-bb-secondary"
-              onClick={onClearSearch}
-              style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-            >
-              <X size={15} /> Clear Search
-            </button>
-          )}
-        </div>
-
-        {isSearching ? (
-          <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)' }}>
-            <Loader2 size={32} className="spin" style={{ margin: '0 auto 1rem', color: 'var(--accent-gold)' }} />
-            <p>Searching global film vaults & catalog...</p>
-          </div>
-        ) : searchResults.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)' }}>
-            <h3>No movies or series found</h3>
-            <p style={{ marginTop: '0.5rem' }}>Try searching another keyword, director, or actor.</p>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: '1.5rem'
-            }}
-          >
-            {searchResults.map((movie) => (
-              <MovieCard
-                key={movie.tmdb_id}
-                movie={movie}
-                onLogClick={onLogMovie}
-                onTrailerClick={handleOpenTrailer}
-                onClick={onSelectMovie}
-              />
-            ))}
-          </div>
-        )}
-
-        {activeTrailer && (
-          <TrailerModal
-            trailerKey={activeTrailer.key}
-            title={activeTrailer.title}
-            onClose={() => setActiveTrailer(null)}
-          />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div style={{ width: '100%' }}>

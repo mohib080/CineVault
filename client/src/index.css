@@ -149,9 +149,9 @@ input, textarea, select {
   top: 0;
   left: 0;
   right: 0;
-  height: 74px;
+  height: 76px;
   z-index: 100;
-  background: linear-gradient(180deg, rgba(6, 7, 10, 0.98) 0%, rgba(6, 7, 10, 0.78) 65%, rgba(6, 7, 10, 0) 100%);
+  background: linear-gradient(180deg, rgba(6, 7, 10, 0.97) 0%, rgba(6, 7, 10, 0.82) 60%, rgba(6, 7, 10, 0.35) 90%, transparent 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -215,11 +215,11 @@ input, textarea, select {
 
 .bb-nav-link {
   color: #94a3b8;
-  font-size: 1.06rem;
+  font-size: 1.12rem;
   font-weight: 700;
   font-family: var(--font-display);
   letter-spacing: -0.2px;
-  padding: 0.55rem 1.15rem;
+  padding: 0.6rem 1.25rem;
   border-radius: var(--radius-full);
   transition: all 0.2s var(--ease-smooth);
   position: relative;
@@ -248,40 +248,147 @@ input, textarea, select {
   box-shadow: 0 0 12px var(--accent-gold);
 }
 
-/* Right Controls & Wider Search Trigger */
+/* Right Controls & Inline Search Bar */
 .bb-nav-controls {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.bb-search-trigger {
+.bb-search-container {
+  position: relative;
+  width: 420px;
+}
+
+@media (max-width: 1280px) {
+  .bb-search-container {
+    width: 320px;
+  }
+}
+
+@media (max-width: 960px) {
+  .bb-search-container {
+    width: 230px;
+  }
+}
+
+.bb-search-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
+  position: relative;
+  width: 100%;
+}
+
+.bb-search-bar input {
+  width: 100%;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-full);
-  padding: 0.55rem 1.25rem;
-  min-width: 320px;
-  color: #94a3b8;
-  font-size: 0.95rem;
-  cursor: pointer;
+  padding: 0.55rem 2.5rem 0.55rem 2.4rem;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-family: var(--font-sans);
+  outline: none;
   transition: all 0.2s ease;
 }
 
-.bb-search-trigger:hover {
+.bb-search-bar input:focus {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.15);
 }
 
-@media (max-width: 1024px) {
-  .bb-search-trigger {
-    min-width: 240px;
-  }
+.bb-search-bar input::placeholder {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.bb-search-bar-icon {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+  color: var(--accent-gold);
+}
+
+.bb-search-clear-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.bb-search-clear-btn:hover {
+  color: #ffffff;
+}
+
+/* Small Suggestions Dropdown List */
+.bb-suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  min-width: 360px;
+  background: #0d1017;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.92), 0 0 25px rgba(0, 229, 255, 0.08);
+  overflow: hidden;
+  z-index: 150;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: fadeIn 0.18s ease;
+}
+
+.bb-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.bb-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.bb-suggestion-item:hover {
+  background: rgba(0, 229, 255, 0.08);
+}
+
+.bb-suggestion-poster {
+  width: 34px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.bb-suggestion-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bb-suggestion-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 2px;
 }
 
 .bb-kbd-badge {

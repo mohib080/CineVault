@@ -23,7 +23,6 @@ function AppContent() {
   const { user } = useAuth();
 
   const [currentTab, setCurrentTab] = useState<TabType>('home');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
   const [selectedMovieType, setSelectedMovieType] = useState<string | undefined>(undefined);
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
@@ -106,16 +105,7 @@ function AppContent() {
       <Navbar
         currentTab={currentTab}
         onSelectTab={(tab) => {
-          if (tab === 'home') {
-            setSearchQuery('');
-            setCurrentTab('home');
-          } else {
-            setCurrentTab(tab as TabType);
-          }
-        }}
-        onSearchMovie={(q) => {
-          setSearchQuery(q);
-          setCurrentTab('home');
+          setCurrentTab(tab as TabType);
         }}
         onSelectMovie={handleSelectMovie}
         onSelectPerson={handleSelectPerson}
@@ -140,10 +130,8 @@ function AppContent() {
 
         {currentTab === 'home' && (
           <Home
-            searchQuery={searchQuery}
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}
-            onClearSearch={() => setSearchQuery('')}
           />
         )}
 

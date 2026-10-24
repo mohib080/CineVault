@@ -14,17 +14,15 @@ import {
   Upload,
   CalendarDays,
   Flame,
-  Compass,
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Movie, PersonSearchItem, api } from '../services/api';
+import { Movie, api } from '../services/api';
 
 interface NavbarProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
-  onSearchMovie: (query: string) => void;
+  onSearchMovie?: (query: string) => void;
   onSelectMovie?: (movie: Movie) => void;
   onSelectPerson?: (personId: number) => void;
   onQuickLog?: () => void;
@@ -37,114 +35,101 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   onSearchMovie,
   onSelectMovie,
-  onSelectPerson,
   onQuickLog,
   onOpenAuth,
   onOpenImportCSV
 }) => {
   const { user, logout } = useAuth();
 
-  // Search modal state
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchFilter, setSearchFilter] = useState<'all' | 'movies' | 'people'>('all');
+  // Inline search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [movieResults, setMovieResults] = useState<Movie[]>([]);
-  const [peopleResults, setPeopleResults] = useState<PersonSearchItem[]>([]);
+  const [suggestions, setSuggestions] = useState<Movie[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
 
   // Profile dropdown state
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Global Ctrl+K / Cmd+K listener
+  // Global Ctrl+K / Cmd+K listener & click-outside dismiss
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsSearchOpen(true);
+        searchInputRef.current?.focus();
+        if (searchQuery.trim()) {
+          setIsSuggestionsOpen(true);
+        }
       }
       if (e.key === 'Escape') {
-        setIsSearchOpen(false);
+        setIsSuggestionsOpen(false);
         setIsProfileOpen(false);
+        searchInputRef.current?.blur();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
-  // Auto focus search input when modal opens
-  useEffect(() => {
-    if (isSearchOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    } else {
-      setSearchQuery('');
-      setMovieResults([]);
-      setPeopleResults([]);
-    }
-  }, [isSearchOpen]);
-
-  // Click outside listener for profile dropdown
-  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSuggestionsOpen(false);
+      }
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setIsProfileOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  // Debounced live search
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [searchQuery]);
+
+  // Debounced live search autocomplete
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed) {
-      setMovieResults([]);
-      setPeopleResults([]);
+      setSuggestions([]);
       setIsSearching(false);
+      setIsSuggestionsOpen(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        if (searchFilter === 'movies' || searchFilter === 'all') {
-          const mRes = await api.searchMovies(trimmed);
-          setMovieResults(mRes.results || []);
-        } else {
-          setMovieResults([]);
-        }
-
-        if (searchFilter === 'people' || searchFilter === 'all') {
-          const pRes = await api.searchPeople(trimmed);
-          setPeopleResults(pRes.results || []);
-        } else {
-          setPeopleResults([]);
-        }
+        const res = await api.searchMovies(trimmed);
+        const results = res.results || [];
+        setSuggestions(results.slice(0, 8));
+        setIsSuggestionsOpen(true);
       } catch (err) {
-        console.warn('Search query error:', err);
+        console.warn('Autocomplete search error:', err);
       } finally {
         setIsSearching(false);
       }
     }, 180);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchFilter]);
+  }, [searchQuery]);
 
   const handleSelectMovieItem = (movie: Movie) => {
-    setIsSearchOpen(false);
+    setIsSuggestionsOpen(false);
+    setSearchQuery('');
+    setSuggestions([]);
     if (onSelectMovie) {
       onSelectMovie(movie);
-    } else {
+    } else if (onSearchMovie) {
       onSearchMovie(movie.title);
       onSelectTab('home');
     }
   };
 
-  const handleSelectPersonItem = (personId: number) => {
-    setIsSearchOpen(false);
-    if (onSelectPerson) {
-      onSelectPerson(personId);
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (suggestions.length > 0) {
+      handleSelectMovieItem(suggestions[0]);
     }
   };
 
@@ -157,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div
             className="bb-brand"
             onClick={() => {
-              onSearchMovie('');
+              if (onSearchMovie) onSearchMovie('');
               onSelectTab('home');
             }}
           >
@@ -186,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               className={`bb-nav-link ${currentTab === 'home' ? 'active' : ''}`}
               onClick={() => {
-                onSearchMovie('');
+                if (onSearchMovie) onSearchMovie('');
                 onSelectTab('home');
               }}
             >
@@ -226,18 +211,131 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Controls */}
           <div className="bb-nav-controls">
-            {/* Command Search Trigger Button (Wider, with gold icon and clear text) */}
-            <button
-              className="bb-search-trigger"
-              onClick={() => setIsSearchOpen(true)}
-              title="Search movies, series, directors... (Ctrl+K)"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <Search size={16} color="var(--accent-gold)" />
-                <span>Search films, series, people...</span>
-              </div>
-              <span className="bb-kbd-badge">⌘K</span>
-            </button>
+            {/* Inline Search Bar with Dropdown Suggestions */}
+            <div className="bb-search-container" ref={searchContainerRef}>
+              <form className="bb-search-bar" onSubmit={handleFormSubmit}>
+                <Search size={16} className="bb-search-bar-icon" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search films, series, directors... (Ctrl+K)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.trim().length > 0) {
+                      setIsSuggestionsOpen(true);
+                    }
+                  }}
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="bb-search-clear-btn"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSuggestions([]);
+                      setIsSuggestionsOpen(false);
+                    }}
+                    title="Clear"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </form>
+
+              {/* Small Suggestions Dropdown List */}
+              {isSuggestionsOpen && (suggestions.length > 0 || isSearching || (searchQuery.trim() && !isSearching)) && (
+                <div className="bb-suggestions-dropdown">
+                  {isSearching ? (
+                    <div style={{ padding: '0.9rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                      Searching CineVault & TMDB...
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div style={{ padding: '0.9rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                      No matches found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                      {suggestions.map((m) => {
+                        const isSeries = m.title_type === 'series' || m.overview?.includes('[TV Series]');
+                        const posterUrl = m.poster_path
+                          ? (m.poster_path.startsWith('http') ? m.poster_path : `https://image.tmdb.org/t/p/w92${m.poster_path}`)
+                          : null;
+                        const score = m.vote_average || m.rating;
+
+                        return (
+                          <div
+                            key={m.tmdb_id}
+                            className="bb-suggestion-item"
+                            onClick={() => handleSelectMovieItem(m)}
+                          >
+                            {posterUrl ? (
+                              <img
+                                src={posterUrl}
+                                alt={m.title}
+                                className="bb-suggestion-poster"
+                              />
+                            ) : (
+                              <div
+                                className="bb-suggestion-poster"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: '#151922',
+                                  color: isSeries ? 'var(--accent-gold)' : 'var(--accent-cyan)'
+                                }}
+                              >
+                                {isSeries ? <Tv size={14} /> : <Film size={14} />}
+                              </div>
+                            )}
+
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="bb-suggestion-title">
+                                {m.title}
+                              </div>
+                              <div className="bb-suggestion-meta">
+                                <span
+                                  style={{
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
+                                    background: isSeries ? 'rgba(255, 184, 0, 0.15)' : 'rgba(0, 229, 255, 0.12)',
+                                    color: isSeries ? 'var(--accent-gold)' : 'var(--accent-cyan)',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  {isSeries ? 'Series' : 'Film'}
+                                </span>
+                                <span>{m.release_year || 'Cinema'}</span>
+                                {score ? (
+                                  <span
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 2,
+                                      color: 'var(--accent-gold)',
+                                      marginLeft: 'auto'
+                                    }}
+                                  >
+                                    <Star size={10} fill="var(--accent-gold)" />
+                                    {score.toFixed(1)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <ArrowRight size={13} color="var(--text-dim)" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Quick Log CTA Button */}
             {user && onQuickLog && (
@@ -382,7 +480,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           className={`bb-dock-btn ${currentTab === 'home' ? 'active' : ''}`}
           onClick={() => {
-            onSearchMovie('');
+            if (onSearchMovie) onSearchMovie('');
             onSelectTab('home');
           }}
         >
@@ -425,235 +523,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>My Space</span>
         </button>
       </div>
-
-      {/* 3. BingeBang Full-Screen Command Search Modal */}
-      {isSearchOpen && (
-        <div
-          className="bb-search-backdrop"
-          onClick={() => setIsSearchOpen(false)}
-        >
-          <div
-            className="bb-search-window"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header with Search Input & ESC Close Badge */}
-            <div className="bb-search-header">
-              <Search size={20} color="var(--accent-gold)" />
-              <input
-                ref={searchInputRef}
-                className="bb-search-input"
-                type="text"
-                placeholder="Start typing a title, director, or actor..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button
-                className="bb-kbd-badge"
-                onClick={() => setIsSearchOpen(false)}
-                style={{ cursor: 'pointer' }}
-                title="Close (Escape)"
-              >
-                ESC
-              </button>
-            </div>
-
-            {/* Filter Tabs: All | Movies | People */}
-            <div className="bb-search-tabs">
-              <button
-                className={`bb-search-tab ${searchFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setSearchFilter('all')}
-              >
-                All
-              </button>
-              <button
-                className={`bb-search-tab ${searchFilter === 'movies' ? 'active' : ''}`}
-                onClick={() => setSearchFilter('movies')}
-              >
-                Movies & TV
-              </button>
-              <button
-                className={`bb-search-tab ${searchFilter === 'people' ? 'active' : ''}`}
-                onClick={() => setSearchFilter('people')}
-              >
-                Cast & Directors
-              </button>
-            </div>
-
-            {/* Results List */}
-            <div className="bb-search-results-list">
-              {isSearching ? (
-                <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Searching CineVault & TMDB live...
-                </div>
-              ) : searchQuery.trim() && movieResults.length === 0 && peopleResults.length === 0 ? (
-                <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No titles or people found matching "{searchQuery}"
-                </div>
-              ) : (
-                <div>
-                  {/* Movies / TV Results */}
-                  {movieResults.length > 0 && (
-                    <div>
-                      <div
-                        style={{
-                          padding: '0.6rem 1.25rem',
-                          fontSize: '0.72rem',
-                          color: 'var(--text-muted)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.6px',
-                          borderBottom: '1px solid var(--border-subtle)',
-                          background: 'rgba(255, 255, 255, 0.02)'
-                        }}
-                      >
-                        Films & Series ({movieResults.length})
-                      </div>
-                      {movieResults.map((m) => {
-                        const isSeries = m.title_type === 'series' || m.overview?.includes('[TV Series]');
-                        const posterUrl = m.poster_path
-                          ? (m.poster_path.startsWith('http') ? m.poster_path : `https://image.tmdb.org/t/p/w200${m.poster_path}`)
-                          : null;
-                        const score = m.vote_average || m.rating;
-
-                        return (
-                          <div
-                            key={m.tmdb_id}
-                            className="bb-search-item"
-                            onClick={() => handleSelectMovieItem(m)}
-                          >
-                            {posterUrl ? (
-                              <img
-                                src={posterUrl}
-                                alt={m.title}
-                                className="bb-search-poster"
-                              />
-                            ) : (
-                              <div
-                                className="bb-search-poster"
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  background: '#151922',
-                                  color: isSeries ? 'var(--accent-gold)' : 'var(--accent-cyan)'
-                                }}
-                              >
-                                {isSeries ? <Tv size={16} /> : <Film size={16} />}
-                              </div>
-                            )}
-
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span className="bb-search-title">{m.title}</span>
-                                {score && (
-                                  <span
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 2,
-                                      fontSize: '0.72rem',
-                                      color: 'var(--accent-gold)',
-                                      fontFamily: 'var(--font-mono)'
-                                    }}
-                                  >
-                                    <Star size={11} fill="var(--accent-gold)" />
-                                    {score.toFixed(1)}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="bb-search-meta">
-                                <span>{m.release_year || 'Cinema'}</span>
-                                {m.director && <span>• Dir. {m.director}</span>}
-                              </div>
-                            </div>
-
-                            <ArrowRight size={15} color="var(--text-dim)" />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Cast & Directors Results */}
-                  {peopleResults.length > 0 && (
-                    <div>
-                      <div
-                        style={{
-                          padding: '0.6rem 1.25rem',
-                          fontSize: '0.72rem',
-                          color: 'var(--text-muted)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.6px',
-                          borderBottom: '1px solid var(--border-subtle)',
-                          background: 'rgba(255, 255, 255, 0.02)'
-                        }}
-                      >
-                        People ({peopleResults.length})
-                      </div>
-                      {peopleResults.map((p) => {
-                        const profileUrl = p.profile_path
-                          ? `https://image.tmdb.org/t/p/w185${p.profile_path}`
-                          : null;
-
-                        return (
-                          <div
-                            key={p.id}
-                            className="bb-search-item"
-                            onClick={() => handleSelectPersonItem(p.id)}
-                          >
-                            {profileUrl ? (
-                              <img
-                                src={profileUrl}
-                                alt={p.name}
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: '50%',
-                                  objectFit: 'cover'
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: '50%',
-                                  background: '#1e2430',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'var(--accent-gold)',
-                                  fontWeight: 800
-                                }}
-                              >
-                                {p.name.charAt(0)}
-                              </div>
-                            )}
-
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="bb-search-title">{p.name}</div>
-                              <div className="bb-search-meta">
-                                <span>{p.known_for_department || 'Film Industry'}</span>
-                              </div>
-                            </div>
-
-                            <ArrowRight size={15} color="var(--text-dim)" />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {!searchQuery.trim() && (
-                    <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                      Start typing to search over 1,000,000 films, TV series, actors, and directors...
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
