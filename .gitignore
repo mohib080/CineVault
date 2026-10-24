@@ -35,6 +35,9 @@ build/
 *.sw?
 .DS_Store
 
+# Vercel
+.vercel/
+
 # Antigravity & Agent configs
 .agent/
 .agents/
