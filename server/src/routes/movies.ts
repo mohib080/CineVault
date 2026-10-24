@@ -160,8 +160,9 @@ router.get('/discover', async (req: Request, res: Response): Promise<void> => {
     const page = parseInt((req.query.page as string) || '1', 10) || 1;
     const genre = req.query.genre ? parseInt(req.query.genre as string, 10) : undefined;
     const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+    const type = (req.query.type as any) || 'movie';
 
-    const data = await discoverMoviesTMDB(category, page, genre, year);
+    const data = await discoverMoviesTMDB(category, page, genre, year, type);
 
     // Cache movies in background
     Promise.all(data.results.map((m) => cacheMovie(m))).catch(() => {});

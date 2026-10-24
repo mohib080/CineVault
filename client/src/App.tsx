@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Home } from './pages/Home';
+import { MoviesPage } from './pages/MoviesPage';
+import { SeriesPage } from './pages/SeriesPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { Dashboard } from './pages/Dashboard';
 import { MovieDetail } from './pages/MovieDetail';
 import { PersonDetail } from './pages/PersonDetail';
@@ -14,7 +17,7 @@ import { AuthModal } from './pages/AuthPage';
 import { Movie, DiaryEntry, api } from './services/api';
 import { Search, Film, X } from 'lucide-react';
 
-export type TabType = 'home' | 'movies' | 'explore' | 'calendar' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared' | 'person';
+export type TabType = 'home' | 'movies' | 'series' | 'calendar' | 'dashboard' | 'lists' | 'detail' | 'profile' | 'shared' | 'person';
 
 function AppContent() {
   const { user } = useAuth();
@@ -135,7 +138,7 @@ function AppContent() {
           />
         )}
 
-        {(currentTab === 'home' || currentTab === 'movies' || currentTab === 'explore') && (
+        {currentTab === 'home' && (
           <Home
             searchQuery={searchQuery}
             onLogMovie={handleOpenLogForMovie}
@@ -144,7 +147,29 @@ function AppContent() {
           />
         )}
 
-        {(currentTab === 'dashboard' || currentTab === 'calendar') && (
+        {currentTab === 'movies' && (
+          <MoviesPage
+            onLogMovie={handleOpenLogForMovie}
+            onSelectMovie={handleSelectMovie}
+          />
+        )}
+
+        {currentTab === 'series' && (
+          <SeriesPage
+            onLogMovie={handleOpenLogForMovie}
+            onSelectMovie={handleSelectMovie}
+          />
+        )}
+
+        {currentTab === 'calendar' && (
+          <CalendarPage
+            onSelectMovie={handleSelectMovie}
+            onOpenLogModal={handleOpenLogForMovie}
+            onOpenAuth={(mode) => setAuthModalMode(mode)}
+          />
+        )}
+
+        {currentTab === 'dashboard' && (
           <Dashboard
             onQuickLog={handleQuickLogTrigger}
             onSelectMovie={handleSelectMovie}

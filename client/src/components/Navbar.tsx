@@ -181,7 +181,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
 
-          {/* Center Navigation Links (BingeBang layout) */}
+          {/* Center Navigation Links - Home, Movie, Series, Calendar, My Space */}
           <div className="bb-nav-links">
             <button
               className={`bb-nav-link ${currentTab === 'home' ? 'active' : ''}`}
@@ -196,13 +196,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={`bb-nav-link ${currentTab === 'movies' ? 'active' : ''}`}
               onClick={() => onSelectTab('movies')}
             >
-              Movies
+              Movie
             </button>
             <button
-              className={`bb-nav-link ${currentTab === 'explore' ? 'active' : ''}`}
-              onClick={() => onSelectTab('explore')}
+              className={`bb-nav-link ${currentTab === 'series' ? 'active' : ''}`}
+              onClick={() => onSelectTab('series')}
             >
-              Explore
+              Series
             </button>
             <button
               className={`bb-nav-link ${currentTab === 'calendar' ? 'active' : ''}`}
@@ -226,14 +226,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Controls */}
           <div className="bb-nav-controls">
-            {/* Command Search Trigger Button */}
+            {/* Command Search Trigger Button (Wider, with gold icon and clear text) */}
             <button
               className="bb-search-trigger"
               onClick={() => setIsSearchOpen(true)}
               title="Search movies, series, directors... (Ctrl+K)"
             >
-              <Search size={15} />
-              <span style={{ display: 'inline-block' }}>Search...</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <Search size={16} color="var(--accent-gold)" />
+                <span>Search films, series, people...</span>
+              </div>
               <span className="bb-kbd-badge">⌘K</span>
             </button>
 
@@ -393,15 +395,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => onSelectTab('movies')}
         >
           <Film size={19} />
-          <span>Movies</span>
+          <span>Movie</span>
         </button>
 
         <button
-          className={`bb-dock-btn ${currentTab === 'explore' ? 'active' : ''}`}
-          onClick={() => onSelectTab('explore')}
+          className={`bb-dock-btn ${currentTab === 'series' ? 'active' : ''}`}
+          onClick={() => onSelectTab('series')}
         >
-          <Compass size={19} />
-          <span>Explore</span>
+          <Tv size={19} />
+          <span>Series</span>
         </button>
 
         <button

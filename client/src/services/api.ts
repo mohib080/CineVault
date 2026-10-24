@@ -195,10 +195,17 @@ export const api = {
   getMe: () => request<{ user: User }>('/auth/me'),
 
   // Movies & Discovery
-  discoverMovies: (category: string = 'trending', page: number = 1, genre?: number, year?: number) => {
+  discoverMovies: (
+    category: string = 'trending',
+    page: number = 1,
+    genre?: number,
+    year?: number,
+    type?: 'movie' | 'series' | 'tv' | 'all'
+  ) => {
     const params = new URLSearchParams({ category, page: page.toString() });
     if (genre) params.append('genre', genre.toString());
     if (year) params.append('year', year.toString());
+    if (type) params.append('type', type);
     return request<DiscoverResponse>(`/movies/discover?${params.toString()}`);
   },
   getGenres: () => request<{ genres: Genre[] }>('/movies/genres'),

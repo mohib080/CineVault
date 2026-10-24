@@ -193,7 +193,8 @@ export async function discoverMoviesTMDB(
   category: string = 'trending',
   page: number = 1,
   genre?: number,
-  year?: number
+  year?: number,
+  mediaType: 'movie' | 'series' | 'tv' | 'all' = 'movie'
 ): Promise<{ results: TMDBMovie[]; page: number; total_pages: number; total_results: number }> {
   const apiKey = process.env.TMDB_API_KEY;
 
@@ -206,28 +207,55 @@ export async function discoverMoviesTMDB(
         include_adult: 'false'
       });
 
-      if (genre) params.append('with_genres', genre.toString());
-      if (year) params.append('primary_release_year', year.toString());
+      const isTv = mediaType === 'series' || mediaType === 'tv';
 
-      if (category === 'trending' && !genre && !year) {
-        endpoint = `${TMDB_BASE_URL}/trending/movie/week?${params.toString()}`;
-      } else if (category === 'top_rated' && !genre && !year) {
-        endpoint = `${TMDB_BASE_URL}/movie/top_rated?${params.toString()}`;
-      } else if (category === 'upcoming' && !genre && !year) {
-        endpoint = `${TMDB_BASE_URL}/movie/upcoming?${params.toString()}`;
-      } else if (category === 'popular' && !genre && !year) {
-        endpoint = `${TMDB_BASE_URL}/movie/popular?${params.toString()}`;
+      if (isTv) {
+        if (genre) params.append('with_genres', genre.toString());
+        if (year) params.append('first_air_date_year', year.toString());
+
+        if (category === 'trending' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/trending/tv/week?${params.toString()}`;
+        } else if (category === 'top_rated' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/tv/top_rated?${params.toString()}`;
+        } else if ((category === 'upcoming' || category === 'airing') && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/tv/on_the_air?${params.toString()}`;
+        } else if (category === 'popular' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/tv/popular?${params.toString()}`;
+        } else {
+          const sortBy =
+            category === 'top_rated'
+              ? 'vote_average.desc'
+              : category === 'upcoming' || category === 'airing'
+              ? 'first_air_date.desc'
+              : 'popularity.desc';
+          params.append('sort_by', sortBy);
+          if (category === 'top_rated') params.append('vote_count.gte', '200');
+          endpoint = `${TMDB_BASE_URL}/discover/tv?${params.toString()}`;
+        }
       } else {
-        // Use discover endpoint with sorting
-        const sortBy =
-          category === 'top_rated'
-            ? 'vote_average.desc'
-            : category === 'upcoming'
-            ? 'primary_release_date.desc'
-            : 'popularity.desc';
-        params.append('sort_by', sortBy);
-        if (category === 'top_rated') params.append('vote_count.gte', '300');
-        endpoint = `${TMDB_BASE_URL}/discover/movie?${params.toString()}`;
+        if (genre) params.append('with_genres', genre.toString());
+        if (year) params.append('primary_release_year', year.toString());
+
+        if (category === 'trending' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/trending/movie/week?${params.toString()}`;
+        } else if (category === 'top_rated' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/movie/top_rated?${params.toString()}`;
+        } else if (category === 'upcoming' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/movie/upcoming?${params.toString()}`;
+        } else if (category === 'popular' && !genre && !year) {
+          endpoint = `${TMDB_BASE_URL}/movie/popular?${params.toString()}`;
+        } else {
+          // Use discover endpoint with sorting
+          const sortBy =
+            category === 'top_rated'
+              ? 'vote_average.desc'
+              : category === 'upcoming'
+              ? 'primary_release_date.desc'
+              : 'popularity.desc';
+          params.append('sort_by', sortBy);
+          if (category === 'top_rated') params.append('vote_count.gte', '300');
+          endpoint = `${TMDB_BASE_URL}/discover/movie?${params.toString()}`;
+        }
       }
 
       const response = await fetch(endpoint);
@@ -241,7 +269,7 @@ export async function discoverMoviesTMDB(
             : m.first_air_date
             ? parseInt(m.first_air_date.split('-')[0], 10)
             : undefined,
-          title_type: 'movie',
+          title_type: isTv ? 'series' : 'movie',
           poster_path: m.poster_path,
           backdrop_path: m.backdrop_path,
           overview: m.overview,
@@ -263,12 +291,19 @@ export async function discoverMoviesTMDB(
 
   // Graceful offline fallback from LETTERBOXD_CATALOG
   let pool = [...LETTERBOXD_CATALOG];
+  if (mediaType === 'series' || mediaType === 'tv') {
+    pool = pool.filter((m) => m.title_type === 'series' || m.overview?.includes('[TV Series]'));
+    if (pool.length === 0) pool = [...LETTERBOXD_CATALOG];
+  } else if (mediaType === 'movie') {
+    pool = pool.filter((m) => m.title_type !== 'series');
+  }
+
   if (year) {
     pool = pool.filter((m) => m.release_year === year);
   }
   if (category === 'top_rated') {
     pool.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  } else if (category === 'upcoming') {
+  } else if (category === 'upcoming' || category === 'airing') {
     pool.sort((a, b) => (b.release_year || 0) - (a.release_year || 0));
   }
 
