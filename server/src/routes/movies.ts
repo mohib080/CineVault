@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../config/db';
 import { searchMoviesTMDB, getMovieDetailsTMDB, getCuratedPopular, TMDBMovie } from '../config/tmdb';
+import { LETTERBOXD_CATALOG } from '../config/catalog';
 import { optionalAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
@@ -9,45 +10,59 @@ const router = Router();
 export async function cacheMovie(movie: TMDBMovie): Promise<void> {
   try {
     await db.query(
-      `INSERT INTO movies (tmdb_id, title, release_year, poster_path, backdrop_path, director, runtime, overview)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO movies (tmdb_id, title, release_year, title_type, poster_path, backdrop_path, director, runtime, overview, rating)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (tmdb_id) DO UPDATE SET
          title = EXCLUDED.title,
          release_year = COALESCE(EXCLUDED.release_year, movies.release_year),
+         title_type = COALESCE(EXCLUDED.title_type, movies.title_type),
          poster_path = COALESCE(EXCLUDED.poster_path, movies.poster_path),
          backdrop_path = COALESCE(EXCLUDED.backdrop_path, movies.backdrop_path),
          director = COALESCE(EXCLUDED.director, movies.director),
          runtime = COALESCE(EXCLUDED.runtime, movies.runtime),
-         overview = COALESCE(EXCLUDED.overview, movies.overview)`,
+         overview = COALESCE(EXCLUDED.overview, movies.overview),
+         rating = COALESCE(EXCLUDED.rating, movies.rating)`,
       [
         movie.tmdb_id,
         movie.title,
         movie.release_year || null,
+        movie.title_type || 'movie',
         movie.poster_path || null,
         movie.backdrop_path || null,
         movie.director || null,
         movie.runtime || null,
-        movie.overview || null
+        movie.overview || null,
+        movie.rating || null
       ]
     );
   } catch (err) {
-    // If table doesn't support ON CONFLICT (like basic SQLite statement fallback), do check-insert
     try {
       const existing = await db.query('SELECT tmdb_id FROM movies WHERE tmdb_id = $1', [movie.tmdb_id]);
       if (existing.rows.length === 0) {
         await db.query(
-          `INSERT INTO movies (tmdb_id, title, release_year, poster_path, backdrop_path, director, runtime, overview)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          `INSERT INTO movies (tmdb_id, title, release_year, title_type, poster_path, backdrop_path, director, runtime, overview, rating)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [
             movie.tmdb_id,
             movie.title,
             movie.release_year || null,
+            movie.title_type || 'movie',
             movie.poster_path || null,
             movie.backdrop_path || null,
             movie.director || null,
             movie.runtime || null,
-            movie.overview || null
+            movie.overview || null,
+            movie.rating || null
           ]
+        );
+      } else {
+        await db.query(
+          `UPDATE movies SET 
+             poster_path = COALESCE($1, poster_path),
+             backdrop_path = COALESCE($2, backdrop_path),
+             rating = COALESCE($3, rating)
+           WHERE tmdb_id = $4`,
+          [movie.poster_path || null, movie.backdrop_path || null, movie.rating || null, movie.tmdb_id]
         );
       }
     } catch (fallbackErr) {
@@ -56,15 +71,31 @@ export async function cacheMovie(movie: TMDBMovie): Promise<void> {
   }
 }
 
-// Search movies across local database (IMDb + cache) and external TMDB
+// Seed or update the Letterboxd catalog into the database
+export async function seedCatalog(): Promise<void> {
+  for (const item of LETTERBOXD_CATALOG) {
+    try {
+      await cacheMovie(item);
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+// Run seed asynchronously on module load
+seedCatalog().catch(() => {});
+
+// Search movies across local database (Letterboxd catalog + IMDb + cache) and external TMDB
 router.get('/search', async (req: Request, res: Response): Promise<void> => {
   try {
     const query = (req.query.q as string) || '';
     if (!query.trim()) {
+      // Return top films and series with real posters, ranked by rating
       const dbMovies = await db.query(
         `SELECT * FROM movies 
-         ORDER BY (poster_path IS NOT NULL AND poster_path != '') DESC, release_year DESC, tmdb_id ASC 
-         LIMIT 60`
+         WHERE poster_path IS NOT NULL AND poster_path != ''
+         ORDER BY rating DESC, release_year DESC 
+         LIMIT 80`
       );
       if (dbMovies.rows.length >= 10) {
         res.json({ results: dbMovies.rows });
@@ -74,27 +105,31 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 1. Search local database (fast indexed query with intelligent ranking)
+    // 1. Search local database (fast query with intelligent Letterboxd-style ranking)
     const cleanQ = query.trim();
     const dbResults = await db.query(
       `SELECT * FROM movies 
-       WHERE LOWER(title) LIKE LOWER($1) OR LOWER(director) LIKE LOWER($1)
+       WHERE LOWER(title) LIKE LOWER($1) 
+          OR LOWER(director) LIKE LOWER($1)
+          OR LOWER(overview) LIKE LOWER($1)
        ORDER BY 
+         (poster_path IS NOT NULL AND poster_path != '') DESC,
          CASE 
            WHEN LOWER(title) = LOWER($2) THEN 0
+           WHEN LOWER(title) = LOWER('the ' || $2) THEN 0
            WHEN LOWER(title) LIKE LOWER($3) THEN 1
+           WHEN LOWER(title) LIKE LOWER('the ' || $3) THEN 1
            ELSE 2 
          END,
-         (poster_path IS NOT NULL AND poster_path != '') DESC, 
          rating DESC,
          release_year DESC 
-       LIMIT 30`,
+       LIMIT 40`,
       [`%${cleanQ}%`, cleanQ, `${cleanQ}%`]
     );
 
     let combined: any[] = [...dbResults.rows];
 
-    // 2. Also search TMDB if key is configured
+    // 2. Also search TMDB if key is configured, or filter catalog
     try {
       const tmdbResults = await searchMoviesTMDB(query);
       for (const m of tmdbResults) {
@@ -114,23 +149,27 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// Popular / Trending movies
+// Popular / Trending movies & TV series
 router.get('/popular', async (_req: Request, res: Response): Promise<void> => {
   try {
     const dbMovies = await db.query(
       `SELECT * FROM movies 
-       ORDER BY (poster_path IS NOT NULL AND poster_path != '') DESC, release_year DESC, tmdb_id ASC 
-       LIMIT 60`
+       WHERE poster_path IS NOT NULL AND poster_path != ''
+       ORDER BY rating DESC, release_year DESC 
+       LIMIT 80`
     );
 
-    if (dbMovies.rows.length >= 10) {
+    if (dbMovies.rows.length >= 20) {
       res.json({ results: dbMovies.rows });
     } else {
-      const curated = getCuratedPopular();
-      for (const m of curated) {
-        cacheMovie(m).catch(() => {});
-      }
-      res.json({ results: curated });
+      await seedCatalog();
+      const updated = await db.query(
+        `SELECT * FROM movies 
+         WHERE poster_path IS NOT NULL AND poster_path != ''
+         ORDER BY rating DESC, release_year DESC 
+         LIMIT 80`
+      );
+      res.json({ results: updated.rows.length > 0 ? updated.rows : getCuratedPopular() });
     }
   } catch (err: any) {
     console.error('Popular movies error:', err);
@@ -151,11 +190,11 @@ router.get('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Response
     const cached = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdbId]);
     let movie = cached.rows[0];
 
-    if (!movie) {
+    if (!movie || !movie.poster_path) {
       const fetched = await getMovieDetailsTMDB(tmdbId);
       if (fetched) {
         await cacheMovie(fetched);
-        movie = fetched;
+        movie = { ...movie, ...fetched };
       }
     }
 

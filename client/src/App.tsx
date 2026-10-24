@@ -124,6 +124,7 @@ function AppContent() {
             searchQuery={searchQuery}
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}
+            onClearSearch={() => setSearchQuery('')}
           />
         )}
 

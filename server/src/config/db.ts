@@ -121,9 +121,13 @@ class SQLiteFallbackDatabase implements IDatabase {
   }
 
   async query<T = any>(text: string, params: any[] = []): Promise<QueryResult<T>> {
-    // Convert PostgreSQL style $1, $2, etc. to SQLite style ?
-    let convertedSql = text;
-    convertedSql = convertedSql.replace(/\$(\d+)/g, '?');
+    // Map PostgreSQL style $1, $2, etc. to SQLite style ? while preserving parameter mapping
+    const mappedParams: any[] = [];
+    let convertedSql = text.replace(/\$(\d+)/g, (_, n) => {
+      const idx = parseInt(n, 10) - 1;
+      mappedParams.push(params[idx]);
+      return '?';
+    });
 
     // Handle PostgreSQL specific syntax variations:
     // e.g. NOW() -> CURRENT_TIMESTAMP, CURRENT_DATE -> date('now')
@@ -140,13 +144,13 @@ class SQLiteFallbackDatabase implements IDatabase {
     try {
       if (trimmed.startsWith('SELECT')) {
         const stmt = this.db.prepare(convertedSql);
-        const rows = stmt.all(...params) as T[];
+        const rows = stmt.all(...mappedParams) as T[];
         return { rows, rowCount: rows.length };
       }
 
       if (trimmed.startsWith('INSERT')) {
         const stmt = this.db.prepare(sqlWithoutReturning);
-        const info = stmt.run(...params);
+        const info = stmt.run(...mappedParams);
         if (hasReturning) {
           // If query inserted into a table, fetch the inserted row by lastInsertRowid
           const fromTableMatch = sqlWithoutReturning.match(/INTO\s+([a-zA-Z0-9_]+)/i);
@@ -175,9 +179,8 @@ class SQLiteFallbackDatabase implements IDatabase {
             try {
               // Extract params that correspond to WHERE clause if possible
               const preSelect = this.db.prepare(`SELECT * FROM ${table} ${whereClause}`);
-              // Heuristic: pass params matching ? count in whereClause
               const whereParamCount = (whereClause.match(/\?/g) || []).length;
-              const whereParams = params.slice(params.length - whereParamCount);
+              const whereParams = mappedParams.slice(mappedParams.length - whereParamCount);
               rowsBefore = preSelect.all(...whereParams);
             } catch {
               // ignore pre-select error
@@ -186,7 +189,7 @@ class SQLiteFallbackDatabase implements IDatabase {
         }
 
         const stmt = this.db.prepare(sqlWithoutReturning);
-        const info = stmt.run(...params);
+        const info = stmt.run(...mappedParams);
 
         if (hasReturning && rowsBefore.length > 0) {
           // Refetch updated row(s)
@@ -204,10 +207,10 @@ class SQLiteFallbackDatabase implements IDatabase {
 
       // Default statement execution
       const stmt = this.db.prepare(convertedSql);
-      const rows = stmt.all ? (stmt.all(...params) as T[]) : [];
+      const rows = stmt.all ? (stmt.all(...mappedParams) as T[]) : [];
       return { rows, rowCount: rows.length };
     } catch (err) {
-      console.error('SQLite execution error on query:', convertedSql, params, err);
+      console.error('SQLite execution error on query:', convertedSql, mappedParams, err);
       throw err;
     }
   }

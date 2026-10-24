@@ -7,9 +7,10 @@ interface HomeProps {
   onLogMovie: (movie: Movie) => void;
   onSelectMovie: (movie: Movie) => void;
   searchQuery: string;
+  onClearSearch?: () => void;
 }
 
-export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQuery }) => {
+export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQuery, onClearSearch }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MOVIE' | 'SERIES'>('ALL');
   const [loading, setLoading] = useState(true);
@@ -122,17 +123,28 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
 
       {/* Movies Grid Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {searchQuery ? (
-            <>
-              <Search size={20} color="var(--accent-cyan)" /> Search Results for "{searchQuery}"
-            </>
-          ) : (
-            <>
-              <Sparkles size={20} color="var(--accent-gold)" /> Featured Cinema & Series Catalog
-            </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {searchQuery ? (
+              <>
+                <Search size={20} color="var(--accent-cyan)" /> Results for "{searchQuery}"
+              </>
+            ) : (
+              <>
+                <Sparkles size={20} color="var(--accent-gold)" /> Popular Cinema & Series
+              </>
+            )}
+          </h2>
+          {searchQuery && onClearSearch && (
+            <button
+              onClick={onClearSearch}
+              className="btn btn-secondary"
+              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+            >
+              Clear Search
+            </button>
           )}
-        </h2>
+        </div>
 
         {/* Type Filter Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
