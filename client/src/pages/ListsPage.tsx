@@ -76,6 +76,17 @@ export const ListsPage: React.FC = () => {
   };
 
   const handleToggleVisibility = async (listId: number, nextVisibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE') => {
+    const prevLists = [...lists];
+    const prevSelected = selectedList ? { ...selectedList } : null;
+
+    // Optimistic immediate update
+    setLists((prev) =>
+      prev.map((l) => (l.id === listId ? { ...l, visibility: nextVisibility } : l))
+    );
+    if (selectedList && selectedList.id === listId) {
+      setSelectedList((prev) => (prev ? { ...prev, visibility: nextVisibility } : null));
+    }
+
     try {
       const res = await api.updateListVisibility(listId, nextVisibility);
       setLists((prev) =>
@@ -92,28 +103,48 @@ export const ListsPage: React.FC = () => {
         });
       }
     } catch (err: any) {
+      // Revert on error
+      setLists(prevLists);
+      setSelectedList(prevSelected);
       alert(`Failed to update list visibility: ${err.message}`);
     }
   };
 
   const handleRemoveItem = async (tmdbId: number) => {
     if (!selectedList) return;
+    const prevItems = [...listItems];
+    // Optimistic immediate removal
+    setListItems((prev) => prev.filter((i) => i.tmdb_id !== tmdbId));
+
     try {
       await api.removeMovieFromList(selectedList.id, tmdbId);
-      setListItems((prev) => prev.filter((i) => i.tmdb_id !== tmdbId));
     } catch (err: any) {
+      // Revert on error
+      setListItems(prevItems);
       alert(`Failed to remove movie: ${err.message}`);
     }
   };
 
   const handleDeleteList = async (listId: number) => {
     if (!confirm('Are you sure you want to delete this list?')) return;
-    try {
-      await api.deleteList(listId);
-      setLists((prev) => prev.filter((l) => l.id !== listId));
+    const prevLists = [...lists];
+    const prevSelected = selectedList ? { ...selectedList } : null;
+    const prevItems = [...listItems];
+
+    // Optimistic immediate deletion
+    setLists((prev) => prev.filter((l) => l.id !== listId));
+    if (selectedList?.id === listId) {
       setSelectedList(null);
       setListItems([]);
+    }
+
+    try {
+      await api.deleteList(listId);
     } catch (err: any) {
+      // Revert on error
+      setLists(prevLists);
+      setSelectedList(prevSelected);
+      setListItems(prevItems);
       alert(`Failed to delete list: ${err.message}`);
     }
   };

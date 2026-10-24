@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../config/db';
+import { appDataCache } from '../utils/cache';
 import {
   searchMoviesTMDB,
   getFullMovieDetailsTMDB,
@@ -13,7 +14,7 @@ import { optionalAuth, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 
-// Cache or update movie in movies table and relational tables
+// Cache or update movie in movies table and relational tables (batched upserts)
 export async function cacheMovie(movie: TMDBMovie): Promise<void> {
   try {
     await db.query(
@@ -53,64 +54,108 @@ export async function cacheMovie(movie: TMDBMovie): Promise<void> {
       ]
     );
 
-    // Cache relational genres if available
+    // Batched relational genres
     if (movie.genres && movie.genres.length > 0) {
-      for (const g of movie.genres) {
-        try {
-          await db.query(
-            `INSERT INTO genres (id, name) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
-            [g.id, g.name]
-          );
-          await db.query(
-            `INSERT INTO movie_genres (tmdb_id, genre_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [movie.tmdb_id, g.id]
-          );
-        } catch {
-          // Ignore unique constraints
-        }
-      }
+      const gVals: any[] = [];
+      const gPlaceholders: string[] = [];
+      movie.genres.forEach((g, idx) => {
+        gPlaceholders.push(`($${idx * 2 + 1}, $${idx * 2 + 2})`);
+        gVals.push(g.id, g.name);
+      });
+      await db.query(
+        `INSERT INTO genres (id, name) VALUES ${gPlaceholders.join(', ')}
+         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
+        gVals
+      ).catch(() => {});
+
+      const mgVals: any[] = [];
+      const mgPlaceholders: string[] = [];
+      movie.genres.forEach((g, idx) => {
+        mgPlaceholders.push(`($${idx * 2 + 1}, $${idx * 2 + 2})`);
+        mgVals.push(movie.tmdb_id, g.id);
+      });
+      await db.query(
+        `INSERT INTO movie_genres (tmdb_id, genre_id) VALUES ${mgPlaceholders.join(', ')}
+         ON CONFLICT DO NOTHING`,
+        mgVals
+      ).catch(() => {});
     }
 
-    // Cache relational cast if available
-    if (movie.cast && movie.cast.length > 0) {
+    // Batched relational people (deduplicated across cast & crew)
+    const peopleMap = new Map<number, { name: string; profile_path: string | null }>();
+    if (movie.cast) {
       for (const c of movie.cast) {
-        try {
-          await db.query(
-            `INSERT INTO people (person_id, name, profile_path) VALUES ($1, $2, $3)
-             ON CONFLICT (person_id) DO UPDATE SET name = EXCLUDED.name, profile_path = COALESCE(EXCLUDED.profile_path, people.profile_path)`,
-            [c.person_id, c.name, c.profile_path || null]
-          );
-          await db.query(
-            `INSERT INTO movie_credits (tmdb_id, person_id, credit_type, character_name, job, billing_order)
-             VALUES ($1, $2, 'cast', $3, 'Actor', $4)
-             ON CONFLICT DO NOTHING`,
-            [movie.tmdb_id, c.person_id, c.character_name || null, c.billing_order || 0]
-          );
-        } catch {
-          // Ignore
+        if (c.person_id && !peopleMap.has(c.person_id)) {
+          peopleMap.set(c.person_id, { name: c.name, profile_path: c.profile_path || null });
+        }
+      }
+    }
+    if (movie.crew) {
+      for (const cr of movie.crew) {
+        if (cr.person_id && !peopleMap.has(cr.person_id)) {
+          peopleMap.set(cr.person_id, { name: cr.name, profile_path: cr.profile_path || null });
         }
       }
     }
 
-    // Cache relational crew if available
-    if (movie.crew && movie.crew.length > 0) {
-      for (const cr of movie.crew) {
-        try {
-          await db.query(
-            `INSERT INTO people (person_id, name, profile_path) VALUES ($1, $2, $3)
-             ON CONFLICT (person_id) DO UPDATE SET name = EXCLUDED.name, profile_path = COALESCE(EXCLUDED.profile_path, people.profile_path)`,
-            [cr.person_id, cr.name, cr.profile_path || null]
-          );
-          await db.query(
-            `INSERT INTO movie_credits (tmdb_id, person_id, credit_type, character_name, job, billing_order)
-             VALUES ($1, $2, 'crew', NULL, $3, 0)
-             ON CONFLICT DO NOTHING`,
-            [movie.tmdb_id, cr.person_id, cr.job]
-          );
-        } catch {
-          // Ignore
+    if (peopleMap.size > 0) {
+      const pVals: any[] = [];
+      const pPlaceholders: string[] = [];
+      let pIdx = 0;
+      for (const [personId, info] of peopleMap.entries()) {
+        pPlaceholders.push(`($${pIdx * 3 + 1}, $${pIdx * 3 + 2}, $${pIdx * 3 + 3})`);
+        pVals.push(personId, info.name, info.profile_path);
+        pIdx++;
+      }
+      await db.query(
+        `INSERT INTO people (person_id, name, profile_path) VALUES ${pPlaceholders.join(', ')}
+         ON CONFLICT (person_id) DO UPDATE SET name = EXCLUDED.name, profile_path = COALESCE(EXCLUDED.profile_path, people.profile_path)`,
+        pVals
+      ).catch(() => {});
+    }
+
+    // Batched relational credits (cast + crew)
+    const creditsToInsert: Array<{ person_id: number; credit_type: string; character_name: string | null; job: string; billing_order: number }> = [];
+    if (movie.cast) {
+      for (const c of movie.cast) {
+        if (c.person_id) {
+          creditsToInsert.push({
+            person_id: c.person_id,
+            credit_type: 'cast',
+            character_name: c.character_name || null,
+            job: 'Actor',
+            billing_order: c.billing_order || 0
+          });
         }
       }
+    }
+    if (movie.crew) {
+      for (const cr of movie.crew) {
+        if (cr.person_id) {
+          creditsToInsert.push({
+            person_id: cr.person_id,
+            credit_type: 'crew',
+            character_name: null,
+            job: cr.job || 'Crew',
+            billing_order: 0
+          });
+        }
+      }
+    }
+
+    if (creditsToInsert.length > 0) {
+      const cVals: any[] = [];
+      const cPlaceholders: string[] = [];
+      creditsToInsert.forEach((cr, idx) => {
+        cPlaceholders.push(`($${idx * 6 + 1}, $${idx * 6 + 2}, $${idx * 6 + 3}, $${idx * 6 + 4}, $${idx * 6 + 5}, $${idx * 6 + 6})`);
+        cVals.push(movie.tmdb_id, cr.person_id, cr.credit_type, cr.character_name, cr.job, cr.billing_order);
+      });
+      await db.query(
+        `INSERT INTO movie_credits (tmdb_id, person_id, credit_type, character_name, job, billing_order)
+         VALUES ${cPlaceholders.join(', ')}
+         ON CONFLICT DO NOTHING`,
+        cVals
+      ).catch(() => {});
     }
   } catch (err) {
     try {
@@ -251,35 +296,39 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// Popular / Trending movies & TV series
+// Popular / Trending movies & TV series (cached in-memory for instant response)
 router.get('/popular', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const dbMovies = await db.query(
-      `SELECT * FROM movies 
-       WHERE poster_path IS NOT NULL AND poster_path != ''
-       ORDER BY COALESCE(vote_average, rating) DESC, release_year DESC 
-       LIMIT 80`
-    );
-
-    if (dbMovies.rows.length >= 20) {
-      res.json({ results: dbMovies.rows });
-    } else {
-      await seedCatalog();
-      const updated = await db.query(
+    const data = await appDataCache.getOrSet('movies:popular', async () => {
+      const dbMovies = await db.query(
         `SELECT * FROM movies 
          WHERE poster_path IS NOT NULL AND poster_path != ''
          ORDER BY COALESCE(vote_average, rating) DESC, release_year DESC 
          LIMIT 80`
       );
-      res.json({ results: updated.rows.length > 0 ? updated.rows : getCuratedPopular() });
-    }
+
+      if (dbMovies.rows.length >= 20) {
+        return { results: dbMovies.rows };
+      } else {
+        await seedCatalog();
+        const updated = await db.query(
+          `SELECT * FROM movies 
+           WHERE poster_path IS NOT NULL AND poster_path != ''
+           ORDER BY COALESCE(vote_average, rating) DESC, release_year DESC 
+           LIMIT 80`
+        );
+        return { results: updated.rows.length > 0 ? updated.rows : getCuratedPopular() };
+      }
+    }, 5 * 60 * 1000);
+
+    res.json(data);
   } catch (err: any) {
     console.error('Popular movies error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to fetch popular movies.' });
   }
 });
 
-// Single movie details with lazy-hydration (credits, videos, similar, relational cast & crew)
+// Single movie details with non-blocking background hydration & in-memory caching
 router.get('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const tmdbId = parseInt(req.params.id, 10);
@@ -289,62 +338,94 @@ router.get('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Response
     }
 
     const typeQuery = req.query.type as 'movie' | 'series' | 'tv' | undefined;
+    const baseCacheKey = `movie:base:${tmdbId}:${typeQuery || 'any'}`;
 
-    // Check local database cache
-    const cached = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdbId]);
-    let movie = cached.rows[0];
+    // Get public movie data (cached with stale-while-revalidate for instant 0ms responses)
+    const baseData = await appDataCache.getOrSet(baseCacheKey, async () => {
+      // Check local database cache
+      const cached = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdbId]);
+      let movie = cached.rows[0];
 
-    // Check if there is a type mismatch (e.g. user requested series but cache had movie, like 81356 13 Chairs)
-    const typeMismatch =
-      typeQuery &&
-      movie &&
-      ((typeQuery === 'series' || typeQuery === 'tv') && movie.title_type === 'movie');
+      // Check if there is a type mismatch (e.g. user requested series but cache had movie, like 81356 13 Chairs)
+      const typeMismatch =
+        typeQuery &&
+        movie &&
+        ((typeQuery === 'series' || typeQuery === 'tv') && movie.title_type === 'movie');
 
-    // Check if we need hydration (if movie not found or missing rich fields like trailer_key or overview, or type mismatch)
-    let richDetails: TMDBMovie | null = null;
-    if (!movie || !movie.trailer_key || !movie.tagline || typeMismatch) {
-      richDetails = await getFullMovieDetailsTMDB(tmdbId, typeQuery || (movie?.title_type as any));
-      if (richDetails) {
-        await cacheMovie(richDetails);
-        const refreshed = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdbId]);
-        movie = refreshed.rows[0] || richDetails;
+      let richDetails: TMDBMovie | null = null;
+      if (!movie || !movie.trailer_key || !movie.tagline || typeMismatch) {
+        richDetails = await getFullMovieDetailsTMDB(tmdbId, typeQuery || (movie?.title_type as any));
+        if (richDetails) {
+          // NON-BLOCKING: Trigger PostgreSQL hydration asynchronously in the background
+          setImmediate(() => {
+            cacheMovie(richDetails!).catch((e) => console.warn('Background cacheMovie failed:', e));
+          });
+          movie = richDetails;
+        }
       }
-    }
 
-    if (!movie) {
+      if (!movie) {
+        return null;
+      }
+
+      // Query relational data in parallel
+      const [genresRes, castRes, crewRes, communityLogs] = await Promise.all([
+        db.query(
+          `SELECT g.id, g.name 
+           FROM genres g
+           JOIN movie_genres mg ON g.id = mg.genre_id
+           WHERE mg.tmdb_id = $1`,
+          [tmdbId]
+        ).catch(() => ({ rows: [] })),
+        db.query(
+          `SELECT p.person_id, p.name, p.profile_path, mc.character_name, mc.billing_order
+           FROM people p
+           JOIN movie_credits mc ON p.person_id = mc.person_id
+           WHERE mc.tmdb_id = $1 AND mc.credit_type = 'cast'
+           ORDER BY mc.billing_order ASC
+           LIMIT 20`,
+          [tmdbId]
+        ).catch(() => ({ rows: [] })),
+        db.query(
+          `SELECT p.person_id, p.name, p.profile_path, mc.job
+           FROM people p
+           JOIN movie_credits mc ON p.person_id = mc.person_id
+           WHERE mc.tmdb_id = $1 AND mc.credit_type = 'crew'
+           LIMIT 10`,
+          [tmdbId]
+        ).catch(() => ({ rows: [] })),
+        db.query(
+          `SELECT d.id, d.rating, d.review_text, d.watched_date, d.is_rewatch, d.contains_spoilers, d.liked, d.tags, d.created_at,
+                  u.username
+           FROM diary_entries d
+           JOIN users u ON d.user_id = u.id
+           WHERE d.tmdb_id = $1 AND d.visibility = 'PUBLIC'
+           ORDER BY d.watched_date DESC, d.created_at DESC
+           LIMIT 10`,
+          [tmdbId]
+        ).catch(() => ({ rows: [] }))
+      ]);
+
+      const similar =
+        richDetails?.similar ||
+        LETTERBOXD_CATALOG.filter((m) => m.tmdb_id !== tmdbId).slice(0, 6);
+
+      return {
+        movie: {
+          ...movie,
+          genres: genresRes.rows.length > 0 ? genresRes.rows : richDetails?.genres || [],
+          cast: castRes.rows.length > 0 ? castRes.rows : richDetails?.cast || [],
+          crew: crewRes.rows.length > 0 ? crewRes.rows : richDetails?.crew || [],
+          similar
+        },
+        communityLogs: communityLogs.rows
+      };
+    }, 15 * 60 * 1000);
+
+    if (!baseData) {
       res.status(404).json({ error: 'Not Found', message: 'Movie not found.' });
       return;
     }
-
-    // Query relational genres
-    const genresRes = await db.query(
-      `SELECT g.id, g.name 
-       FROM genres g
-       JOIN movie_genres mg ON g.id = mg.genre_id
-       WHERE mg.tmdb_id = $1`,
-      [tmdbId]
-    );
-
-    // Query relational cast
-    const castRes = await db.query(
-      `SELECT p.person_id, p.name, p.profile_path, mc.character_name, mc.billing_order
-       FROM people p
-       JOIN movie_credits mc ON p.person_id = mc.person_id
-       WHERE mc.tmdb_id = $1 AND mc.credit_type = 'cast'
-       ORDER BY mc.billing_order ASC
-       LIMIT 20`,
-      [tmdbId]
-    );
-
-    // Query relational crew
-    const crewRes = await db.query(
-      `SELECT p.person_id, p.name, p.profile_path, mc.job
-       FROM people p
-       JOIN movie_credits mc ON p.person_id = mc.person_id
-       WHERE mc.tmdb_id = $1 AND mc.credit_type = 'crew'
-       LIMIT 10`,
-      [tmdbId]
-    );
 
     // If authenticated, get user's personal logs for this movie
     let userLogs: any[] = [];
@@ -359,33 +440,10 @@ router.get('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Response
       userLogs = logs.rows;
     }
 
-    // Fetch public community reviews for this movie
-    const communityLogs = await db.query(
-      `SELECT d.id, d.rating, d.review_text, d.watched_date, d.is_rewatch, d.contains_spoilers, d.liked, d.tags, d.created_at,
-              u.username
-       FROM diary_entries d
-       JOIN users u ON d.user_id = u.id
-       WHERE d.tmdb_id = $1 AND d.visibility = 'PUBLIC'
-       ORDER BY d.watched_date DESC, d.created_at DESC
-       LIMIT 10`,
-      [tmdbId]
-    );
-
-    // Similar movies fallback from catalog or live details
-    const similar =
-      richDetails?.similar ||
-      LETTERBOXD_CATALOG.filter((m) => m.tmdb_id !== tmdbId).slice(0, 6);
-
     res.json({
-      movie: {
-        ...movie,
-        genres: genresRes.rows.length > 0 ? genresRes.rows : richDetails?.genres || [],
-        cast: castRes.rows.length > 0 ? castRes.rows : richDetails?.cast || [],
-        crew: crewRes.rows.length > 0 ? crewRes.rows : richDetails?.crew || [],
-        similar
-      },
+      movie: baseData.movie,
       userLogs,
-      communityLogs: communityLogs.rows
+      communityLogs: baseData.communityLogs
     });
   } catch (err: any) {
     console.error('Movie detail error:', err);

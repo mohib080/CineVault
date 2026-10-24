@@ -61,20 +61,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
   }, [filter, user?.username]);
 
   const handleToggleVisibility = async (id: number, nextVisibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE') => {
+    const previousEntries = [...entries];
+    // Optimistic immediate update
+    setEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, visibility: nextVisibility } : e))
+    );
+    showToast(`Privacy updated to ${nextVisibility}`);
+
     try {
       const res = await api.updateDiaryVisibility(id, nextVisibility);
       setEntries((prev) =>
         prev.map((e) => (e.id === id ? { ...e, visibility: res.entry.visibility, share_token: res.entry.share_token } : e))
       );
-      showToast(`Privacy updated to ${nextVisibility}`);
       if (nextVisibility === 'UNLISTED' && res.entry.share_token) {
         setShareModalItem({
           id,
           token: res.entry.share_token,
-          title: entries.find((e) => e.id === id)?.title || 'Movie Log'
+          title: previousEntries.find((e) => e.id === id)?.title || 'Movie Log'
         });
       }
     } catch (err: any) {
+      // Revert on error
+      setEntries(previousEntries);
       alert(`Error updating visibility: ${err.message}`);
     }
   };
@@ -83,11 +91,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onQuickLog, onEditEntry, o
     if (!confirm(`Are you sure you want to remove your log for "${title || 'this movie'}" from your vault?`)) {
       return;
     }
+    const previousEntries = [...entries];
+    // Optimistic immediate deletion
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    showToast('Entry removed from vault');
+
     try {
       await api.deleteDiaryEntry(id);
-      setEntries((prev) => prev.filter((e) => e.id !== id));
-      showToast('Entry removed from vault');
     } catch (err: any) {
+      // Revert on error
+      setEntries(previousEntries);
       alert(`Failed to delete entry: ${err.message}`);
     }
   };

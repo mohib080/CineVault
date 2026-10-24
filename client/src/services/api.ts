@@ -143,6 +143,32 @@ export interface DiscoverResponse {
   total_results: number;
 }
 
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const requestCache = new Map<string, CacheEntry<any>>();
+const prefetchedSet = new Set<string>();
+
+export function invalidateClientCache(prefix?: string) {
+  if (!prefix) {
+    requestCache.clear();
+    prefetchedSet.clear();
+    return;
+  }
+  for (const key of requestCache.keys()) {
+    if (key.includes(prefix)) {
+      requestCache.delete(key);
+    }
+  }
+}
+
+export function getCachedData<T>(endpoint: string): T | undefined {
+  const entry = requestCache.get(endpoint);
+  return entry ? (entry.data as T) : undefined;
+}
+
 export function getAuthToken(): string | null {
   return localStorage.getItem('cinevault_token');
 }
@@ -153,9 +179,10 @@ export function setAuthToken(token: string | null) {
   } else {
     localStorage.removeItem('cinevault_token');
   }
+  invalidateClientCache();
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function fetchWithAuth<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -178,6 +205,59 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   return data as T;
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+
+  // If GET and cached, return immediately and trigger SWR background revalidation if older than 30s
+  if (isGet) {
+    const cached = requestCache.get(endpoint);
+    if (cached) {
+      const isStale = Date.now() - cached.timestamp > 30 * 1000;
+      if (isStale) {
+        fetchWithAuth<T>(endpoint, options)
+          .then((fresh) => {
+            requestCache.set(endpoint, { data: fresh, timestamp: Date.now() });
+          })
+          .catch(() => {});
+      }
+      return cached.data as T;
+    }
+  }
+
+  // If mutation, auto-invalidate relevant cached endpoints
+  if (!isGet) {
+    if (endpoint.startsWith('/diary')) {
+      invalidateClientCache('/diary');
+      invalidateClientCache('/users');
+      invalidateClientCache('/movies');
+    } else if (endpoint.startsWith('/lists')) {
+      invalidateClientCache('/lists');
+      invalidateClientCache('/users');
+    } else if (endpoint.startsWith('/users')) {
+      invalidateClientCache('/users');
+    } else if (endpoint.startsWith('/auth')) {
+      invalidateClientCache();
+    }
+  }
+
+  const result = await fetchWithAuth<T>(endpoint, options);
+  if (isGet) {
+    requestCache.set(endpoint, { data: result, timestamp: Date.now() });
+  }
+  return result;
+}
+
+// Prefetch a movie into the client-side SWR cache for zero-latency clicks
+export function prefetchMovie(id: number, type?: string): Promise<void> {
+  const cacheKey = `/movies/${id}${type ? `?type=${encodeURIComponent(type)}` : ''}`;
+  if (prefetchedSet.has(cacheKey) || requestCache.has(cacheKey)) {
+    return Promise.resolve();
+  }
+  prefetchedSet.add(cacheKey);
+  return api.getMovieDetail(id, type).then(() => {}).catch(() => {});
 }
 
 export const api = {

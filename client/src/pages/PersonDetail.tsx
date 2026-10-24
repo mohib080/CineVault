@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle2, Film, Star, Calendar, MapPin, Award, Loader2 } from 'lucide-react';
-import { PersonDetail as PersonDetailType, Movie, api } from '../services/api';
+import { PersonDetail as PersonDetailType, Movie, api, getCachedData } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 interface PersonDetailProps {
@@ -17,15 +17,29 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
   onLogMovie
 }) => {
   const { user } = useAuth();
-  const [data, setData] = useState<PersonDetailType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `/people/${personId}`;
+  const initialCached = getCachedData<PersonDetailType>(cacheKey);
+
+  const [data, setData] = useState<PersonDetailType | null>(initialCached || null);
+  const [loading, setLoading] = useState(!initialCached);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cast' | 'crew'>('crew');
+  const [activeTab, setActiveTab] = useState<'cast' | 'crew'>(() => {
+    if (initialCached) {
+      if (initialCached.crew_credits.length > 0 && initialCached.person.known_for_department === 'Directing') {
+        return 'crew';
+      } else if (initialCached.cast_credits.length > 0) {
+        return 'cast';
+      }
+    }
+    return 'crew';
+  });
   const [showFullBio, setShowFullBio] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
+    if (!initialCached) {
+      setLoading(true);
+    }
     setError(null);
 
     api.getPersonDetail(personId)

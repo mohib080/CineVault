@@ -4,32 +4,38 @@ import { requireAuth, optionalAuth, AuthenticatedRequest } from '../middleware/a
 import { enforceResourceAccess } from '../middleware/accessControl';
 import { generateShareToken } from '../utils/crypto';
 import { cacheMovie } from './movies';
+import { appDataCache } from '../utils/cache';
 
 const router = Router();
 
-// Fetch current user's lists & watchlist
+// Fetch current user's lists & watchlist (cached for instant response)
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
     const { is_watchlist } = req.query;
+    const cacheKey = `lists:user:${userId}:${is_watchlist !== undefined ? is_watchlist : 'all'}`;
 
-    let query = `
-      SELECT l.*, COUNT(li.tmdb_id) as item_count
-      FROM movie_lists l
-      LEFT JOIN list_items li ON l.id = li.list_id
-      WHERE l.user_id = $1
-    `;
-    const params: any[] = [userId];
+    const data = await appDataCache.getOrSet(cacheKey, async () => {
+      let query = `
+        SELECT l.*, COUNT(li.tmdb_id) as item_count
+        FROM movie_lists l
+        LEFT JOIN list_items li ON l.id = li.list_id
+        WHERE l.user_id = $1
+      `;
+      const params: any[] = [userId];
 
-    if (is_watchlist !== undefined) {
-      params.push(is_watchlist === 'true' ? 1 : 0);
-      query += ` AND l.is_watchlist = $2`;
-    }
+      if (is_watchlist !== undefined) {
+        params.push(is_watchlist === 'true' ? 1 : 0);
+        query += ` AND l.is_watchlist = $2`;
+      }
 
-    query += ` GROUP BY l.id ORDER BY l.created_at DESC`;
+      query += ` GROUP BY l.id ORDER BY l.created_at DESC`;
 
-    const result = await db.query(query, params);
-    res.json({ lists: result.rows });
+      const result = await db.query(query, params);
+      return { lists: result.rows };
+    }, 5 * 60 * 1000);
+
+    res.json(data);
   } catch (err: any) {
     console.error('Error fetching lists:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to fetch movie lists.' });
@@ -61,6 +67,9 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
        RETURNING *`,
       [userId, title.trim(), description || null, is_watchlist ? 1 : 0, listVisibility, shareToken]
     );
+
+    appDataCache.invalidatePrefix(`lists:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
 
     res.status(201).json({
       message: 'List created successfully',
@@ -161,8 +170,12 @@ router.patch('/:id/visibility', requireAuth, async (req: AuthenticatedRequest, r
       [visibility, shareToken, listId]
     );
 
+    appDataCache.invalidatePrefix(`lists:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+
     res.json({
       message: `List visibility changed to ${visibility}`,
+      entry: updated.rows[0],
       list: updated.rows[0]
     });
   } catch (err: any) {
@@ -213,6 +226,9 @@ router.post('/:id/items', requireAuth, async (req: AuthenticatedRequest, res: Re
       [listId, tmdb_id, rank_order || 0, notes || null]
     );
 
+    appDataCache.invalidatePrefix(`lists:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+
     res.status(201).json({ message: 'Movie added to list.' });
   } catch (err: any) {
     console.error('Error adding item to list:', err);
@@ -239,6 +255,10 @@ router.delete('/:id/items/:tmdb_id', requireAuth, async (req: AuthenticatedReque
     }
 
     await db.query('DELETE FROM list_items WHERE list_id = $1 AND tmdb_id = $2', [listId, tmdbId]);
+
+    appDataCache.invalidatePrefix(`lists:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+
     res.json({ message: 'Movie removed from list.' });
   } catch (err: any) {
     console.error('Error removing item from list:', err);
@@ -264,6 +284,10 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respon
     }
 
     await db.query('DELETE FROM movie_lists WHERE id = $1', [listId]);
+
+    appDataCache.invalidatePrefix(`lists:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+
     res.json({ message: 'List deleted successfully.' });
   } catch (err: any) {
     console.error('Error deleting list:', err);

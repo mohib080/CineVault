@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
-import { Movie } from '../services/api';
+import { Movie, prefetchMovie } from '../services/api';
 import { Plus, Film, Star, Tv, Play, ArrowUpRight, Lock, Link2, Globe } from 'lucide-react';
 
 interface MovieCardProps {
@@ -15,6 +15,7 @@ const HOVER_SCALE = 1.05;
 export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrailerClick, onClick }) => {
   const cardWrapRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const prefetchTimerRef = useRef<any>(null);
 
   const hasPoster = Boolean(movie.poster_path && movie.poster_path.trim() !== '');
   const posterUrl = hasPoster
@@ -28,6 +29,9 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrail
     return () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+      }
+      if (prefetchTimerRef.current !== null) {
+        clearTimeout(prefetchTimerRef.current);
       }
     };
   }, []);
@@ -70,11 +74,25 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrail
     });
   }, []);
 
+  const handleMouseEnter = useCallback(() => {
+    if (prefetchTimerRef.current !== null) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+    // 120ms hover debounce before warming movie details
+    prefetchTimerRef.current = setTimeout(() => {
+      prefetchMovie(movie.tmdb_id, movie.title_type);
+    }, 120);
+  }, [movie.tmdb_id, movie.title_type]);
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     updateFromPoint(e.clientX, e.clientY);
   }, [updateFromPoint]);
 
   const handleMouseLeave = useCallback(() => {
+    if (prefetchTimerRef.current !== null) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
     resetTilt();
   }, [resetTilt]);
 
@@ -87,6 +105,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onLogClick, onTrail
     <div
       className="bb-movie-card"
       onClick={() => onClick && onClick(movie)}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onTouchMove={handleTouchMove}

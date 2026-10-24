@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Movie, DiaryEntry, api } from '../services/api';
+import { Movie, DiaryEntry, api, getCachedData } from '../services/api';
 import { RatingStars } from '../components/RatingStars';
 import { PrivacyBadge } from '../components/PrivacyBadge';
 import { TrailerModal } from '../components/TrailerModal';
@@ -36,15 +36,21 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
   onSelectPerson
 }) => {
   const { user } = useAuth();
-  const [movie, setMovie] = useState<Movie | null>(null);
-  const [userLogs, setUserLogs] = useState<DiaryEntry[]>([]);
-  const [communityLogs, setCommunityLogs] = useState<DiaryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const cacheKey = `/movies/${tmdbId}${titleType ? `?type=${encodeURIComponent(titleType)}` : ''}`;
+  const initialCached = getCachedData<{ movie: Movie; userLogs: DiaryEntry[]; communityLogs: DiaryEntry[] }>(cacheKey);
+
+  const [movie, setMovie] = useState<Movie | null>(initialCached?.movie || null);
+  const [userLogs, setUserLogs] = useState<DiaryEntry[]>(initialCached?.userLogs || []);
+  const [communityLogs, setCommunityLogs] = useState<DiaryEntry[]>(initialCached?.communityLogs || []);
+  const [loading, setLoading] = useState(!initialCached);
   const [showTrailer, setShowTrailer] = useState(false);
 
   useEffect(() => {
     async function load() {
-      setLoading(true);
+      if (!initialCached) {
+        setLoading(true);
+      }
       try {
         const res = await api.getMovieDetail(tmdbId, titleType);
         setMovie(res.movie);

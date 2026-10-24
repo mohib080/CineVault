@@ -139,23 +139,21 @@ export const Home: React.FC<HomeProps> = ({ onLogMovie, onSelectMovie, searchQue
     }
   };
 
-  // 1. Initial Load for Hero Banner & Swimlanes
+  // 1. Initial Load for Hero Banner & Swimlanes (Parallel Fetch)
   useEffect(() => {
     async function loadHeroAndLanes() {
       try {
-        // Load Trending
-        const trendRes = await api.discoverMovies(trendingWindow, 1);
+        const [trendRes, upRes, topRes] = await Promise.all([
+          api.discoverMovies(trendingWindow, 1),
+          api.discoverMovies('upcoming', 1),
+          api.discoverMovies('top_rated', 1)
+        ]);
+
         setTrendingMovies(trendRes.results);
         if (heroMovies.length === 0 && trendRes.results.length > 0) {
           setHeroMovies(trendRes.results.slice(0, 5));
         }
-
-        // Load Upcoming
-        const upRes = await api.discoverMovies('upcoming', 1);
         setUpcomingMovies(upRes.results);
-
-        // Load Top Rated
-        const topRes = await api.discoverMovies('top_rated', 1);
         setTopRatedMovies(topRes.results);
       } catch (err) {
         console.warn('Initial discovery error:', err);

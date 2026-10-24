@@ -306,14 +306,25 @@ export async function getDb(): Promise<IDatabase> {
     process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cinevault_db';
 
   try {
+    const isRemoteNeon =
+      connectionString.includes('neon.tech') ||
+      connectionString.includes('sslmode=require') ||
+      Boolean(process.env.DATABASE_URL);
+
+    // Optimized NeonDB Connection Pool with keepAlive and warm reuse
     const pool = new Pool({
       connectionString,
-      connectionTimeoutMillis: 1500
+      keepAlive: true,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+      ssl: isRemoteNeon ? { rejectUnauthorized: false } : undefined
     });
 
-    // Test PostgreSQL connectivity
+    // Test PostgreSQL connectivity and warm up pool immediately
     const client = await pool.connect();
-    console.log('Connected successfully to PostgreSQL database.');
+    await client.query('SELECT 1');
+    console.log('Connected successfully to PostgreSQL database (pool warmed up & keepAlive active).');
 
     // Execute schema.sql to ensure tables exist
     try {

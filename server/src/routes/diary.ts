@@ -5,6 +5,7 @@ import { enforceResourceAccess } from '../middleware/accessControl';
 import { generateShareToken } from '../utils/crypto';
 import { cacheMovie } from './movies';
 import { searchMoviesTMDB } from '../config/tmdb';
+import { appDataCache } from '../utils/cache';
 
 const router = Router();
 
@@ -148,6 +149,11 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
     );
 
     const created = result.rows[0];
+
+    // Invalidate user diary, profile and movie caches
+    appDataCache.invalidatePrefix(`diary:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+    appDataCache.invalidatePrefix(`movie:base:${tmdb_id}`);
 
     // Fetch movie details for response
     const movieRes = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdb_id]);
@@ -295,6 +301,12 @@ router.post('/import-csv', requireAuth, async (req: AuthenticatedRequest, res: R
       }
     }
 
+    // Invalidate caches upon CSV import
+    appDataCache.invalidatePrefix(`diary:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+    appDataCache.invalidatePrefix('movie:base:');
+    appDataCache.invalidatePrefix(`lists:user:${userId}`);
+
     res.json({
       message: `Successfully imported ${imported} films from Letterboxd CSV.`,
       imported,
@@ -308,29 +320,34 @@ router.post('/import-csv', requireAuth, async (req: AuthenticatedRequest, res: R
   }
 });
 
-// Fetch user's own diary entries (with optional privacy filter)
+// Fetch user's own diary entries (with optional privacy filter, cached for instant retrieval)
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
     const { visibility } = req.query;
+    const cacheKey = `diary:user:${userId}:${visibility || 'ALL'}`;
 
-    let query = `
-      SELECT d.*, m.title, m.release_year, m.poster_path, m.backdrop_path, m.director, m.runtime
-      FROM diary_entries d
-      JOIN movies m ON d.tmdb_id = m.tmdb_id
-      WHERE d.user_id = $1
-    `;
-    const params: any[] = [userId];
+    const data = await appDataCache.getOrSet(cacheKey, async () => {
+      let query = `
+        SELECT d.*, m.title, m.release_year, m.poster_path, m.backdrop_path, m.director, m.runtime
+        FROM diary_entries d
+        JOIN movies m ON d.tmdb_id = m.tmdb_id
+        WHERE d.user_id = $1
+      `;
+      const params: any[] = [userId];
 
-    if (visibility && ['PUBLIC', 'UNLISTED', 'PRIVATE'].includes(visibility as string)) {
-      params.push(visibility);
-      query += ` AND d.visibility = $2`;
-    }
+      if (visibility && ['PUBLIC', 'UNLISTED', 'PRIVATE'].includes(visibility as string)) {
+        params.push(visibility);
+        query += ` AND d.visibility = $2`;
+      }
 
-    query += ` ORDER BY d.watched_date DESC, d.created_at DESC`;
+      query += ` ORDER BY d.watched_date DESC, d.created_at DESC`;
 
-    const result = await db.query(query, params);
-    res.json({ entries: result.rows });
+      const result = await db.query(query, params);
+      return { entries: result.rows };
+    }, 5 * 60 * 1000);
+
+    res.json(data);
   } catch (err: any) {
     console.error('Error fetching diary entries:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to fetch diary entries.' });
@@ -416,6 +433,10 @@ router.patch('/:id/visibility', requireAuth, async (req: AuthenticatedRequest, r
       [visibility, shareToken, entryId]
     );
 
+    appDataCache.invalidatePrefix(`diary:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+    appDataCache.invalidatePrefix(`movie:base:${entry.tmdb_id}`);
+
     res.json({
       message: `Visibility changed to ${visibility}`,
       entry: updated.rows[0]
@@ -483,6 +504,10 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
       ]
     );
 
+    appDataCache.invalidatePrefix(`diary:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+    appDataCache.invalidatePrefix(`movie:base:${entry.tmdb_id}`);
+
     res.json({
       message: 'Diary entry updated successfully',
       entry: updated.rows[0]
@@ -499,7 +524,7 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respon
     const entryId = parseInt(req.params.id, 10);
     const userId = req.user!.id;
 
-    const entryCheck = await db.query('SELECT user_id FROM diary_entries WHERE id = $1', [entryId]);
+    const entryCheck = await db.query('SELECT user_id, tmdb_id FROM diary_entries WHERE id = $1', [entryId]);
     if (entryCheck.rows.length === 0) {
       res.status(404).json({ error: 'Not Found', message: 'Diary entry not found.' });
       return;
@@ -511,6 +536,11 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respon
     }
 
     await db.query('DELETE FROM diary_entries WHERE id = $1', [entryId]);
+
+    appDataCache.invalidatePrefix(`diary:user:${userId}`);
+    appDataCache.invalidatePrefix('profile:');
+    appDataCache.invalidatePrefix(`movie:base:${entryCheck.rows[0].tmdb_id}`);
+
     res.json({ message: 'Diary entry deleted successfully.' });
   } catch (err: any) {
     console.error('Error deleting diary entry:', err);

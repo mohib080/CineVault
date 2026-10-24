@@ -1,34 +1,45 @@
 import { Router, Response } from 'express';
 import { db } from '../config/db';
 import { optionalAuth, requireAuth, AuthenticatedRequest } from '../middleware/auth';
+import { appDataCache } from '../utils/cache';
 
 const router = Router();
 
-// Get Top 4 Favorite Films for a user
+// Get Top 4 Favorite Films for a user (cached)
 router.get('/:username/favorites', async (req, res): Promise<void> => {
   try {
     const { username } = req.params;
-    const userRes = await db.query(
-      'SELECT id, username FROM users WHERE LOWER(username) = LOWER($1)',
-      [username.trim()]
-    );
+    const cleanUser = username.trim().toLowerCase();
 
-    if (userRes.rows.length === 0) {
+    const data = await appDataCache.getOrSet(`favorites:${cleanUser}`, async () => {
+      const userRes = await db.query(
+        'SELECT id, username FROM users WHERE LOWER(username) = LOWER($1)',
+        [cleanUser]
+      );
+
+      if (userRes.rows.length === 0) {
+        return null;
+      }
+
+      const userId = userRes.rows[0].id;
+      const favsRes = await db.query(
+        `SELECT uf.slot, m.tmdb_id, m.title, m.release_year, m.poster_path, m.backdrop_path, m.director, m.rating
+         FROM user_favorites uf
+         JOIN movies m ON uf.tmdb_id = m.tmdb_id
+         WHERE uf.user_id = $1
+         ORDER BY uf.slot ASC`,
+        [userId]
+      );
+
+      return { favorites: favsRes.rows };
+    }, 15 * 60 * 1000);
+
+    if (!data) {
       res.status(404).json({ error: 'Not Found', message: 'User not found.' });
       return;
     }
 
-    const userId = userRes.rows[0].id;
-    const favsRes = await db.query(
-      `SELECT uf.slot, m.tmdb_id, m.title, m.release_year, m.poster_path, m.backdrop_path, m.director, m.rating
-       FROM user_favorites uf
-       JOIN movies m ON uf.tmdb_id = m.tmdb_id
-       WHERE uf.user_id = $1
-       ORDER BY uf.slot ASC`,
-      [userId]
-    );
-
-    res.json({ favorites: favsRes.rows });
+    res.json(data);
   } catch (err: any) {
     console.error('Error fetching favorites:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to fetch favorites.' });
@@ -68,6 +79,10 @@ router.put('/me/favorites', requireAuth, async (req: AuthenticatedRequest, res: 
        ORDER BY uf.slot ASC`,
       [userId]
     );
+
+    // Invalidate caches
+    appDataCache.invalidatePrefix('favorites:');
+    appDataCache.invalidatePrefix('profile:');
 
     res.json({
       message: 'Favorites updated successfully.',
