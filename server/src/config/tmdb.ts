@@ -110,29 +110,69 @@ export async function searchMoviesTMDB(query: string): Promise<TMDBMovie[]> {
 
   if (apiKey && apiKey.trim() !== '') {
     try {
-      const url = `${TMDB_BASE_URL}/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`;
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        const results = data.results || [];
-        return results
-          .filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv')
-          .map((m: any) => ({
-            tmdb_id: m.id,
-            title: m.title || m.name,
-            release_year: m.release_date
-              ? parseInt(m.release_date.split('-')[0], 10)
-              : m.first_air_date
-              ? parseInt(m.first_air_date.split('-')[0], 10)
-              : undefined,
-            title_type: m.media_type === 'tv' ? 'series' : 'movie',
-            poster_path: m.poster_path,
-            backdrop_path: m.backdrop_path,
-            overview: m.overview,
-            vote_average: m.vote_average ? Math.round(m.vote_average * 10) / 10 : undefined,
-            rating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : undefined
-          }));
+      // 1. Detect natural language intent like "series", "tv", "show", "movie", "film"
+      const lowerQ = query.toLowerCase();
+      const hasTvIntent = /\b(tv series|tv show|series|tv|shows|show|season)\b/i.test(lowerQ);
+      const hasMovieIntent = /\b(movies|movie|films|film|cinema)\b/i.test(lowerQ);
+
+      const cleanTitle = query
+        .replace(/\b(tv series|tv show|series|tv|shows|show|season|movies|movie|films|film|cinema)\b/gi, '')
+        .trim();
+
+      const searchQueries = [query];
+      if (cleanTitle && cleanTitle.length >= 2 && cleanTitle.toLowerCase() !== query.toLowerCase()) {
+        searchQueries.unshift(cleanTitle); // Try cleanTitle first
       }
+
+      let allRawResults: any[] = [];
+      for (const qToSearch of searchQueries) {
+        const url = `${TMDB_BASE_URL}/search/multi?api_key=${apiKey}&query=${encodeURIComponent(qToSearch)}&include_adult=false`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            allRawResults = data.results;
+            break;
+          }
+        }
+      }
+
+      const results = allRawResults
+        .filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv')
+        .map((m: any) => ({
+          tmdb_id: m.id,
+          title: m.title || m.name,
+          release_year: m.release_date
+            ? parseInt(m.release_date.split('-')[0], 10)
+            : m.first_air_date
+            ? parseInt(m.first_air_date.split('-')[0], 10)
+            : undefined,
+          title_type: m.media_type === 'tv' ? 'series' : 'movie',
+          poster_path: m.poster_path,
+          backdrop_path: m.backdrop_path,
+          overview: m.overview,
+          vote_average: m.vote_average ? Math.round(m.vote_average * 10) / 10 : undefined,
+          rating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : undefined,
+          popularity: m.popularity || 0,
+          vote_count: m.vote_count || 0
+        }));
+
+      // Sort results by user intent if "series" or "movie" was in query
+      if (hasTvIntent) {
+        results.sort((a, b) => {
+          if (a.title_type === 'series' && b.title_type !== 'series') return -1;
+          if (b.title_type === 'series' && a.title_type !== 'series') return 1;
+          return (b.popularity || 0) - (a.popularity || 0);
+        });
+      } else if (hasMovieIntent) {
+        results.sort((a, b) => {
+          if (a.title_type === 'movie' && b.title_type !== 'movie') return -1;
+          if (b.title_type === 'movie' && a.title_type !== 'movie') return 1;
+          return (b.popularity || 0) - (a.popularity || 0);
+        });
+      }
+
+      return results;
     } catch (err) {
       console.warn('TMDB search request failed, falling back to local dataset:', err);
     }
@@ -244,25 +284,80 @@ export async function discoverMoviesTMDB(
   };
 }
 
-export async function getFullMovieDetailsTMDB(tmdbId: number): Promise<TMDBMovie | null> {
+export async function getFullMovieDetailsTMDB(
+  tmdbId: number,
+  preferredType?: 'movie' | 'series' | 'tv'
+): Promise<TMDBMovie | null> {
   const apiKey = process.env.TMDB_API_KEY;
 
   if (apiKey && apiKey.trim() !== '') {
     try {
-      // 1. First try /movie/{id} with credits, videos, similar
-      let url = `${TMDB_BASE_URL}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`;
-      let response = await fetch(url);
-      let isTv = false;
+      let data: any = null;
+      let isTv = preferredType === 'series' || preferredType === 'tv';
 
-      if (!response.ok) {
-        // Fallback to /tv/{id}
-        url = `${TMDB_BASE_URL}/tv/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`;
-        response = await fetch(url);
-        isTv = true;
+      if (isTv) {
+        // Explicitly query TV endpoint first
+        const tvUrl = `${TMDB_BASE_URL}/tv/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`;
+        const tvRes = await fetch(tvUrl);
+        if (tvRes.ok) {
+          data = await tvRes.json();
+          isTv = true;
+        } else {
+          const movieUrl = `${TMDB_BASE_URL}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`;
+          const movieRes = await fetch(movieUrl);
+          if (movieRes.ok) {
+            data = await movieRes.json();
+            isTv = false;
+          }
+        }
+      } else if (preferredType === 'movie') {
+        // Explicitly query Movie endpoint first
+        const movieUrl = `${TMDB_BASE_URL}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`;
+        const movieRes = await fetch(movieUrl);
+        if (movieRes.ok) {
+          data = await movieRes.json();
+          isTv = false;
+        } else {
+          const tvUrl = `${TMDB_BASE_URL}/tv/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`;
+          const tvRes = await fetch(tvUrl);
+          if (tvRes.ok) {
+            data = await tvRes.json();
+            isTv = true;
+          }
+        }
+      } else {
+        // Preferred type not specified: Query both endpoints in parallel to disambiguate collisions!
+        // E.g. TMDB ID 81356 has both movie (13 Chairs, 12 votes) and TV (Sex Education, 8000+ votes)
+        const [movieRes, tvRes] = await Promise.all([
+          fetch(`${TMDB_BASE_URL}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`),
+          fetch(`${TMDB_BASE_URL}/tv/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos,similar`)
+        ]);
+
+        const movieData = movieRes.ok ? await movieRes.json() : null;
+        const tvData = tvRes.ok ? await tvRes.json() : null;
+
+        if (movieData && tvData) {
+          // Compare community prominence (vote_count & popularity)
+          const tvScore = (tvData.vote_count || 0) * 2 + (tvData.popularity || 0);
+          const movieScore = (movieData.vote_count || 0) * 2 + (movieData.popularity || 0);
+
+          if (tvScore > movieScore) {
+            data = tvData;
+            isTv = true;
+          } else {
+            data = movieData;
+            isTv = false;
+          }
+        } else if (tvData) {
+          data = tvData;
+          isTv = true;
+        } else if (movieData) {
+          data = movieData;
+          isTv = false;
+        }
       }
 
-      if (response.ok) {
-        const data = await response.json();
+      if (data) {
         const directorObj = data.credits?.crew?.find(
           (c: any) => c.job === 'Director' || c.job === 'Series Director' || c.job === 'Executive Producer'
         );

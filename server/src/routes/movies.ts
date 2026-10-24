@@ -197,7 +197,10 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const cleanQ = query.trim();
+    const cleanQ =
+      query
+        .replace(/\b(tv series|tv show|series|tv|shows|show|season|movies|movie|films|film|cinema)\b/gi, '')
+        .trim() || query.trim();
     const dbResults = await db.query(
       `SELECT * FROM movies 
        WHERE LOWER(title) LIKE LOWER($1) 
@@ -224,7 +227,14 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
     try {
       const tmdbResults = await searchMoviesTMDB(query);
       for (const m of tmdbResults) {
-        if (!combined.some((c) => c.tmdb_id === m.tmdb_id)) {
+        const existingIdx = combined.findIndex((c) => c.tmdb_id === m.tmdb_id);
+        if (existingIdx !== -1) {
+          // If collision or mismatch between movie and series, let live TMDB result take precedence
+          if (m.title_type === 'series' && combined[existingIdx].title_type !== 'series') {
+            combined[existingIdx] = m;
+            cacheMovie(m).catch(() => {});
+          }
+        } else {
           combined.push(m);
           cacheMovie(m).catch(() => {});
         }
@@ -277,14 +287,22 @@ router.get('/:id', optionalAuth, async (req: AuthenticatedRequest, res: Response
       return;
     }
 
+    const typeQuery = req.query.type as 'movie' | 'series' | 'tv' | undefined;
+
     // Check local database cache
     const cached = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdbId]);
     let movie = cached.rows[0];
 
-    // Check if we need hydration (if movie not found or missing rich fields like trailer_key or overview)
+    // Check if there is a type mismatch (e.g. user requested series but cache had movie, like 81356 13 Chairs)
+    const typeMismatch =
+      typeQuery &&
+      movie &&
+      ((typeQuery === 'series' || typeQuery === 'tv') && movie.title_type === 'movie');
+
+    // Check if we need hydration (if movie not found or missing rich fields like trailer_key or overview, or type mismatch)
     let richDetails: TMDBMovie | null = null;
-    if (!movie || !movie.trailer_key || !movie.tagline) {
-      richDetails = await getFullMovieDetailsTMDB(tmdbId);
+    if (!movie || !movie.trailer_key || !movie.tagline || typeMismatch) {
+      richDetails = await getFullMovieDetailsTMDB(tmdbId, typeQuery || (movie?.title_type as any));
       if (richDetails) {
         await cacheMovie(richDetails);
         const refreshed = await db.query('SELECT * FROM movies WHERE tmdb_id = $1', [tmdbId]);

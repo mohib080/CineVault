@@ -20,6 +20,7 @@ import {
 
 interface MovieDetailProps {
   tmdbId: number;
+  titleType?: string;
   onBack: () => void;
   onLogMovie: (movie: Movie) => void;
   onSelectMovie?: (movie: Movie) => void;
@@ -28,6 +29,7 @@ interface MovieDetailProps {
 
 export const MovieDetail: React.FC<MovieDetailProps> = ({
   tmdbId,
+  titleType,
   onBack,
   onLogMovie,
   onSelectMovie,
@@ -44,7 +46,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
     async function load() {
       setLoading(true);
       try {
-        const res = await api.getMovieDetail(tmdbId);
+        const res = await api.getMovieDetail(tmdbId, titleType);
         setMovie(res.movie);
         setUserLogs(res.userLogs || []);
         setCommunityLogs(res.communityLogs || []);
@@ -56,7 +58,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
     }
     load();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [tmdbId]);
+  }, [tmdbId, titleType]);
 
   if (loading) {
     return (

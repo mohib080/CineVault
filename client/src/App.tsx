@@ -22,6 +22,7 @@ function AppContent() {
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [selectedMovieType, setSelectedMovieType] = useState<string | undefined>(undefined);
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
 
   // Modals
@@ -55,6 +56,7 @@ function AppContent() {
 
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovieId(movie.tmdb_id);
+    setSelectedMovieType(movie.title_type);
     setCurrentTab('detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -166,6 +168,7 @@ function AppContent() {
         {currentTab === 'detail' && selectedMovieId && (
           <MovieDetail
             tmdbId={selectedMovieId}
+            titleType={selectedMovieType}
             onBack={() => setCurrentTab('home')}
             onLogMovie={handleOpenLogForMovie}
             onSelectMovie={handleSelectMovie}

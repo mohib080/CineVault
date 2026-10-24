@@ -204,7 +204,10 @@ export const api = {
   getGenres: () => request<{ genres: Genre[] }>('/movies/genres'),
   searchMovies: (query: string) => request<{ results: Movie[] }>(`/movies/search?q=${encodeURIComponent(query)}`),
   getPopularMovies: () => request<{ results: Movie[] }>('/movies/popular'),
-  getMovieDetail: (id: number) => request<{ movie: Movie; userLogs: DiaryEntry[]; communityLogs: DiaryEntry[] }>(`/movies/${id}`),
+  getMovieDetail: (id: number, type?: string) =>
+    request<{ movie: Movie; userLogs: DiaryEntry[]; communityLogs: DiaryEntry[] }>(
+      `/movies/${id}${type ? `?type=${encodeURIComponent(type)}` : ''}`
+    ),
 
   // People (Cast & Crew filmographies)
   getPersonDetail: (personId: number) => request<PersonDetail>(`/people/${personId}`),
